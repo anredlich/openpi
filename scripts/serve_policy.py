@@ -16,6 +16,7 @@ class EnvMode(enum.Enum):
 
     ALOHA = "aloha"
     ALOHA_SIM = "aloha_sim"
+    ALOHA_SIM_LORA_FINETUNE = "aloha_sim_low_mem_finetune"
     DROID = "droid"
     LIBERO = "libero"
 
@@ -64,6 +65,10 @@ DEFAULT_CHECKPOINT: dict[EnvMode, Checkpoint] = {
     EnvMode.ALOHA_SIM: Checkpoint(
         config="pi0_aloha_sim",
         dir="gs://openpi-assets/checkpoints/pi0_aloha_sim",
+    ),
+    EnvMode.ALOHA_SIM_LORA_FINETUNE: Checkpoint(
+        config="pi0_aloha_sim_low_mem_finetune",
+        dir="./checkpoints/pi0_aloha_sim_low_mem_finetune/my_lora_experiment/19999",
     ),
     EnvMode.DROID: Checkpoint(
         config="pi05_droid",

@@ -4,20 +4,25 @@ import numpy as np
 from openpi_client import image_tools
 from openpi_client.runtime import environment as _environment
 from typing_extensions import override
-
+from utils_ import plot_observation_images
+import matplotlib.pyplot as plt
 
 class AlohaSimEnvironment(_environment.Environment):
     """An environment for an Aloha robot in simulation."""
 
-    def __init__(self, task: str, obs_type: str = "pixels_agent_pos", seed: int = 0) -> None:
+    def __init__(self, task: str, obs_type: str = "pixels_agent_pos", seed: int = 0, display: bool = False) -> None:
         np.random.seed(seed)
         self._rng = np.random.default_rng(seed)
 
-        self._gym = gymnasium.make(task, obs_type=obs_type)
+        self._gym = gymnasium.make(task, obs_type=obs_type, max_episode_steps=400)
 
         self._last_obs = None
         self._done = True
         self._episode_reward = 0.0
+
+        self.display = display #anr
+        self.plt_imgs = [] #anr
+        self.steps = 0 #anr
 
     @override
     def reset(self) -> None:
@@ -26,6 +31,13 @@ class AlohaSimEnvironment(_environment.Environment):
         self._done = False
         self._episode_reward = 0.0
 
+        #setup display #anr
+        self.steps = 0
+        if self.display:
+            cam_list = ["top"] 
+            self.plt_imgs = plot_observation_images(gym_obs['pixels'], cam_list)
+            plt.pause(0.02)
+ 
     @override
     def is_episode_complete(self) -> bool:
         return self._done
@@ -43,6 +55,15 @@ class AlohaSimEnvironment(_environment.Environment):
         self._last_obs = self._convert_observation(gym_obs)  # type: ignore
         self._done = terminated or truncated
         self._episode_reward = max(self._episode_reward, reward)
+
+        self.steps += 1
+        #display #anr
+        if self.display:
+            cam_list = ["top"]
+            for i in range(len(cam_list)):
+                self.plt_imgs[i].set_data(gym_obs['pixels'][cam_list[i]])
+            plt.pause(0.02)
+            print(f"step= {self.steps} reward={reward}")
 
     def _convert_observation(self, gym_obs: dict) -> dict:
         img = gym_obs["pixels"]["top"]

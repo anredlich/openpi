@@ -1,0 +1,155 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+
+        {
+            "name": "Python Debugger: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+        },
+        {
+            "name": "Python Debugger: simple client main aloha",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                    "--env=ALOHA_SIM",
+                   ]
+        },
+        {
+            "name": "Python Debugger: serve_policy ALOHA_SIM",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                    "--env=ALOHA_SIM", //ALOHA_SIM", ALOHA_SIM_BASE
+                    //"--default_prompt='Transfer cube'",
+                   ]
+        },
+        {
+            "name": "Python Debugger: serve_policy ALOHA_SIM_LORA_FINETUNE",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                    "--env=ALOHA_SIM_LORA_FINETUNE",
+                    //"--default_prompt='Transfer cube'",
+                    //"--policy.dir=checkpoints/pi0_aloha_sim_low_mem_finetune/my_lora_experiment/19999",
+                   ]
+        },
+        {
+            "name": "Python Debugger: compute_norm_stats pi05_libero",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                    "--config-name=pi05_libero",
+                    //"--max-frames=1000",
+                   ]
+        },
+        {
+            "name": "Python Debugger: compute_norm_stats pi0_libero_low_mem_finetune",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                    "--config-name=pi0_libero_low_mem_finetune",
+                    "--max-frames=1000",
+                   ]
+        },
+        {
+            "name": "Python Debugger: compute_norm_stats pi0_aloha_sim_low_mem_finetune",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                    "--config-name=pi0_aloha_sim_low_mem_finetune",
+                    //"--max-frames=1000",
+                   ]
+        },
+        {
+            "name": "Python Debugger: train pi05_libero",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            //"module": "uv",
+            "env": {
+                "XLA_PYTHON_CLIENT_MEM_FRACTION": "0.9"
+            },
+            "args": [
+                //"run",
+                //"scripts/train.py",
+                "pi05_libero",
+                "--exp-name=my_experiment",
+                "--num_train_steps=300", //30_000
+                "--batch_size=8", //256
+                //"--overwrite"
+            ],
+            //"cwd": "${workspaceFolder}"
+            },
+        {
+            "name": "Python Debugger: train pi0_libero_low_mem_finetune",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            //"module": "uv",
+            "env": {
+                "XLA_PYTHON_CLIENT_MEM_FRACTION": "0.9"
+            },
+            "args": [
+                //"run",
+                //"scripts/train.py",
+                "pi0_libero_low_mem_finetune",
+                "--exp-name=my_lora_experiment",
+                "--num_train_steps=300", //30_000
+                //"--batch_size=8", //256
+                //"--overwrite"
+            ],
+            //"cwd": "${workspaceFolder}"
+            },
+        {
+            "name": "Python Debugger: train pi0_aloha_sim_low_mem_finetune",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            //"module": "uv",
+            "env": {
+                "XLA_PYTHON_CLIENT_MEM_FRACTION": "0.9"
+            },
+            "args": [
+                //"run",
+                //"scripts/train.py",
+                "pi0_aloha_sim_low_mem_finetune",
+                "--exp-name=my_lora_experiment",
+                //"--num_train_steps=300", //30_000
+                //"--batch_size=8", //256
+                //"--overwrite"
+            ],
+            //"cwd": "${workspaceFolder}"
+            },
+    ]
+}

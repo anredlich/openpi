@@ -16,14 +16,14 @@ class Args:
     out_dir: pathlib.Path = pathlib.Path("data/aloha_sim/videos")
 
     task: str = "gym_aloha/AlohaTransferCube-v0"
-    seed: int = 0
+    seed: int = 9
 
-    action_horizon: int = 10
+    action_horizon: int = 50 #10 #can be 1-50
 
     host: str = "0.0.0.0"
     port: int = 8000
 
-    display: bool = False
+    display: bool = True
 
 
 def main(args: Args) -> None:
@@ -31,6 +31,7 @@ def main(args: Args) -> None:
         environment=_env.AlohaSimEnvironment(
             task=args.task,
             seed=args.seed,
+            display=args.display,
         ),
         agent=_policy_agent.PolicyAgent(
             policy=action_chunk_broker.ActionChunkBroker(
