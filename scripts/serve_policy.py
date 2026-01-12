@@ -16,6 +16,10 @@ class EnvMode(enum.Enum):
 
     ALOHA = "aloha"
     ALOHA_SIM = "aloha_sim"
+    ALOHA_SIM_X = "aloha_sim_x"
+    ALOHA_SIM_TROSSEN_AI = "aloha_sim_trossen_ai"
+    ALOHA_SIM_TROSSEN_AI_PI05 = "aloha_sim_trossen_ai_pi05"
+    ALOHA_SIM_TROSSEN_AI_FINETUNE = "aloha_sim_trossen_ai_finetune"
     ALOHA_SIM_LORA_FINETUNE = "aloha_sim_low_mem_finetune"
     DROID = "droid"
     LIBERO = "libero"
@@ -65,6 +69,32 @@ DEFAULT_CHECKPOINT: dict[EnvMode, Checkpoint] = {
     EnvMode.ALOHA_SIM: Checkpoint(
         config="pi0_aloha_sim",
         dir="gs://openpi-assets/checkpoints/pi0_aloha_sim",
+    ),
+    EnvMode.ALOHA_SIM_X: Checkpoint(
+        config="pi0_aloha_sim_x",
+        dir="gs://openpi-assets/checkpoints/pi0_aloha_sim",
+        #dir="gs://openpi-assets/checkpoints/pi0_base",
+        #dir="gs://openpi-assets/checkpoints/pi05_base",
+    ),
+    EnvMode.ALOHA_SIM_TROSSEN_AI: Checkpoint(
+        config="pi0_aloha_sim_trossen_ai",
+        #dir="gs://openpi-assets/checkpoints/pi0_aloha_sim",
+        dir="gs://openpi-assets/checkpoints/pi0_base",
+        #dir="gs://openpi-assets/checkpoints/pi05_base",
+    ),
+    EnvMode.ALOHA_SIM_TROSSEN_AI_FINETUNE: Checkpoint(
+        config="pi0_aloha_sim_trossen_ai_mem_finetune_v2",
+        #dir="gs://openpi-assets/checkpoints/pi0_aloha_sim",
+        #dir="gs://openpi-assets/checkpoints/pi0_base",
+        #dir="gs://openpi-assets/checkpoints/pi05_base",
+        #dir="./checkpoints/pi0_aloha_sim_trossen_ai_mem_finetune_v2/trossen_ai_stationary_x0/10000"
+        dir="./checkpoints/pi0_aloha_sim_trossen_ai_mem_finetune_v2/trossen_ai_stationary_x1/19999"
+    ),
+    EnvMode.ALOHA_SIM_TROSSEN_AI_PI05: Checkpoint(
+        config="pi05_aloha_sim_trossen_ai",
+        #dir="gs://openpi-assets/checkpoints/pi0_aloha_sim",
+        #dir="gs://openpi-assets/checkpoints/pi0_base",
+        dir="gs://openpi-assets/checkpoints/pi05_base",
     ),
     EnvMode.ALOHA_SIM_LORA_FINETUNE: Checkpoint(
         config="pi0_aloha_sim_low_mem_finetune",

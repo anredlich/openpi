@@ -235,6 +235,7 @@ class LeRobotAlohaDataConfig(DataConfigFactory):
     # the space used by the pi internal runtime which was used to train the base model. People who
     # use standard Aloha data should set this to true.
     adapt_to_pi: bool = True
+    adapt_trossen_to_pi: bool = False
 
     # Repack transforms.
     repack_transforms: tyro.conf.Suppress[_transforms.Group] = dataclasses.field(
@@ -256,8 +257,8 @@ class LeRobotAlohaDataConfig(DataConfigFactory):
     @override
     def create(self, assets_dirs: pathlib.Path, model_config: _model.BaseModelConfig) -> DataConfig:
         data_transforms = _transforms.Group(
-            inputs=[aloha_policy.AlohaInputs(adapt_to_pi=self.adapt_to_pi)],
-            outputs=[aloha_policy.AlohaOutputs(adapt_to_pi=self.adapt_to_pi)],
+            inputs=[aloha_policy.AlohaInputs(adapt_to_pi=self.adapt_to_pi,adapt_trossen_to_pi=self.adapt_trossen_to_pi)],
+            outputs=[aloha_policy.AlohaOutputs(adapt_to_pi=self.adapt_to_pi,adapt_trossen_to_pi=self.adapt_trossen_to_pi)],
         )
         if self.use_delta_joint_actions:
             delta_action_mask = _transforms.make_bool_mask(6, -1, 6, -1)
@@ -922,6 +923,29 @@ _CONFIGS = [
         num_train_steps=20_000,
     ),
     #
+    # ALOHA Sim X configs. This config is an experimental version of pi0_aloha_sim, above.
+    #
+    TrainConfig(
+        name="pi0_aloha_sim_x",
+        model=pi0_config.Pi0Config(),
+        #model=pi0_config.Pi0Config(pi05=True),
+        data=LeRobotAlohaDataConfig(
+            repo_id="lerobot/aloha_sim_transfer_cube_human",
+            #assets=AssetsConfig(
+            #   #assets_dir="gs://openpi-assets/checkpoints/pi0_base/assets",
+            #   assets_dir="gs://openpi-assets/checkpoints/pi05_base/assets",
+            #   asset_id="trossen",
+            #),
+            default_prompt="Transfer cube",
+            #default_prompt="pick up red cube",
+            use_delta_joint_actions=False,
+        ),
+        policy_metadata={"reset_pose": [0, -1.5, 1.5, 0, 0, 0]},
+        #weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
+        #weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
+        #num_train_steps=20_000,
+    ),
+    #
     # ALOHA Sim configs. This config is used to demonstrate how to train on a simple simulated environment, using LORA.
     #
     TrainConfig(
@@ -945,6 +969,210 @@ _CONFIGS = [
         # Turn off EMA for LoRA finetuning.
         ema_decay=None,
     ),
+    #
+    # ALOHA Sim configs. This config is used to demonstrate how to train on a simple simulated environment, using LORA.
+    #
+    TrainConfig(
+        name="pi0_aloha_sim_low_mem_finetune_v0",
+        #model=pi0_config.Pi0Config(),
+        model=pi0_config.Pi0Config(paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"),
+        data=LeRobotAlohaDataConfig(
+            repo_id="lerobot/aloha_sim_transfer_cube_human",
+            default_prompt="Transfer cube",
+            use_delta_joint_actions=False,
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
+        num_train_steps=20_000,
+        # The freeze filter defines which parameters should be frozen during training.
+        # We have a convenience function in the model config that returns the default freeze filter
+        # for the given model config for LoRA finetuning. Just make sure it matches the model config
+        # you chose above.
+        freeze_filter=pi0_config.Pi0Config(
+            paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"
+        ).get_freeze_filter(),
+        # Turn off EMA for LoRA finetuning.
+        ema_decay=None,
+    ),
+    #
+    # ALOHA Sim Trossen configs. Used by serve_policy.py ALOHA_SIM_TROSSEN_AI. This config is used to demonstrate how to train on the trossen ai simulated environment.
+    #
+    TrainConfig(
+        name="pi0_aloha_sim_trossen_ai",
+        model=pi0_config.Pi0Config(),
+        #model=pi0_config.Pi0Config(pi05=True),
+        data=LeRobotAlohaDataConfig(
+            #repo_id="lerobot/aloha_sim_transfer_cube_human",
+            default_prompt="Transfer cube",
+            #default_prompt="grab red cube", #and handover the 
+            #default_prompt="grab the red cube", #and handover the
+            #default_prompt="pick up the red cube",
+            #default_prompt="pick up the red box",
+            #default_prompt="none",
+            use_delta_joint_actions=False,
+            adapt_to_pi=False,
+            adapt_trossen_to_pi=True,
+            assets=AssetsConfig(
+                #assets_dir="gs://openpi-assets/checkpoints/pi0_base/assets",
+                #assets_dir="gs://openpi-assets/checkpoints/pi05_base/assets",
+                #assets_dir="./assets/pi0_aloha_sim_trossen_ai_mem_finetune_v0/ANRedlich/trossen_ai_stationary_sim_transfer_40mm_cube_07",
+                #assets_dir="./assets/pi0_aloha_sim_trossen_ai_mem_finetune_v1/ANRedlich/trossen_ai_stationary_sim_transfer_40mm_cube_07",
+                assets_dir="./assets/pi0_aloha_sim_trossen_ai_mem_finetune_v2/ANRedlich/trossen_ai_stationary_sim_transfer_40mm_cube_07",
+                asset_id="trossen",
+            ),
+            repack_transforms=_transforms.Group(
+                inputs=[
+                    _transforms.RepackTransform(
+                        {
+                            "images": {
+                                "cam_high": "observation.images.cam_high",
+                                "cam_low": "observation.images.cam_low",
+                                "cam_left_wrist": "observation.images.cam_left_wrist",
+                                "cam_right_wrist": "observation.images.cam_right_wrist",
+                            },
+                            "state": "observation.state",
+                            "actions": "action",
+                        }
+                    )
+                ]
+            ),
+        ),
+        #weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
+        num_train_steps=20_000,
+    ),
+    #
+    # ALOHA Sim Trossen configs. Used by serve_policy.py ALOHA_SIM_TROSSEN_AI for pi05. This config is used to demonstrate how to train on the trossen ai simulated environment.
+    #
+    TrainConfig(
+        name="pi05_aloha_sim_trossen_ai",
+        #model=pi0_config.Pi0Config(),
+        model=pi0_config.Pi0Config(pi05=True),
+        data=LeRobotAlohaDataConfig(
+            #repo_id="lerobot/aloha_sim_transfer_cube_human",
+            default_prompt="Transfer cube",
+            #default_prompt="grab red cube", #and handover the 
+            #default_prompt="grab the red cube", #and handover the
+            #default_prompt="pick up the red cube",
+            #default_prompt="pick up the red box",
+            #default_prompt="none",
+            use_delta_joint_actions=False,
+            adapt_to_pi=False,
+            #adapt_trossen_to_pi=True,
+            # assets=AssetsConfig(
+            #     #assets_dir="gs://openpi-assets/checkpoints/pi0_base/assets",
+            #     #assets_dir="gs://openpi-assets/checkpoints/pi05_base/assets",
+            #     #assets_dir="./assets/pi0_aloha_sim_trossen_ai_mem_finetune_v0/ANRedlich/trossen_ai_stationary_sim_transfer_40mm_cube_07",
+            #     #assets_dir="./assets/pi0_aloha_sim_trossen_ai_mem_finetune_v1/ANRedlich/trossen_ai_stationary_sim_transfer_40mm_cube_07",
+            #     #assets_dir="./assets/pi0_aloha_sim_trossen_ai_mem_finetune_v2/ANRedlich/trossen_ai_stationary_sim_transfer_40mm_cube_07",
+            #     assets_dir="./assets/pi05_aloha_sim_trossen_ai_lora/ANRedlich/trossen_ai_stationary_sim_transfer_40mm_cube_07",
+            #     asset_id="trossen",
+            # ),
+            repack_transforms=_transforms.Group(
+                inputs=[
+                    _transforms.RepackTransform(
+                        {
+                            "images": {
+                                "cam_high": "observation.images.cam_high",
+                                "cam_low": "observation.images.cam_low",
+                                "cam_left_wrist": "observation.images.cam_left_wrist",
+                                "cam_right_wrist": "observation.images.cam_right_wrist",
+                            },
+                            "state": "observation.state",
+                            "actions": "action",
+                        }
+                    )
+                ]
+            ),
+        ),
+        #weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
+        num_train_steps=20_000,
+    ),
+    #
+    # ALOHA Sim Trossen configs. This config is used to demonstrate how to train on the trossen ai simulated environment.
+    # This version v0-v2 is designed to do LORA fine tuning, and initially to create norm stats for the newer trossen ai stationary robot.
+    #
+    TrainConfig(
+        name="pi0_aloha_sim_trossen_ai_mem_finetune_v2",
+        #model=pi0_config.Pi0Config(),
+        model=pi0_config.Pi0Config(paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"),
+        data=LeRobotAlohaDataConfig(
+            #repo_id="ANRedlich/trossen_ai_stationary_sim_transfer_40mm_cube_07",
+            repo_id="ANRedlich/trossen_ai_stationary_sim_transfer_40mm_cube_13",
+            default_prompt="Transfer cube",
+            use_delta_joint_actions=False,
+            adapt_to_pi=False, #False for v1,v2 True for v0
+            adapt_trossen_to_pi=True, #True for v2 norm but by mistake not for ..._07 checkpoint
+            repack_transforms=_transforms.Group(
+                inputs=[
+                    _transforms.RepackTransform(
+                        {
+                            "images": {
+                                "cam_high": "observation.images.cam_high",
+                                "cam_low": "observation.images.cam_low",
+                                "cam_left_wrist": "observation.images.cam_left_wrist",
+                                "cam_right_wrist": "observation.images.cam_right_wrist",
+                            },
+                            "state": "observation.state",
+                            "actions": "action",
+                        }
+                    )
+                ]
+            ),
+       ),       
+       weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
+       num_train_steps=20_000,
+       freeze_filter=pi0_config.Pi0Config(
+           paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"
+       ).get_freeze_filter(),
+       # Turn off EMA for LoRA finetuning.
+       ema_decay=None,
+   ),
+    #
+    # ALOHA Sim Trossen configs. This config is used to demonstrate how to train on the trossen ai simulated environment.
+    # This version is designed to do pi05 LORA fine tuning, and initially to create norm stats for the newer trossen ai stationary robot.
+    #
+    TrainConfig(
+        name="pi05_aloha_sim_trossen_ai_lora",
+        # Key difference: add pi05=True alongside the LoRA variants
+        model=pi0_config.Pi0Config(
+            pi05=True,
+            paligemma_variant="gemma_2b_lora",
+            action_expert_variant="gemma_300m_lora",
+        ),
+        data=LeRobotAlohaDataConfig(
+            repo_id="ANRedlich/trossen_ai_stationary_sim_transfer_40mm_cube_07",
+            default_prompt="Transfer cube",
+            use_delta_joint_actions=False,
+            adapt_to_pi=False,
+            adapt_trossen_to_pi=True,  # (once you wire this through)
+            repack_transforms=_transforms.Group(
+                inputs=[
+                    _transforms.RepackTransform(
+                        {
+                            "images": {
+                                "cam_high": "observation.images.cam_high",
+                                "cam_low": "observation.images.cam_low",
+                                "cam_left_wrist": "observation.images.cam_left_wrist",
+                                "cam_right_wrist": "observation.images.cam_right_wrist",
+                            },
+                            "state": "observation.state",
+                            "actions": "action",
+                        }
+                    )
+                ]
+            ),
+        ),
+        # Load pi05 base weights (not pi0_base)
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
+        num_train_steps=20_000,
+        # freeze_filter must match the model config exactly
+        freeze_filter=pi0_config.Pi0Config(
+            pi05=True,
+            paligemma_variant="gemma_2b_lora",
+            action_expert_variant="gemma_300m_lora",
+        ).get_freeze_filter(),
+        # Turn off EMA for LoRA
+        ema_decay=None,
+    ),   
     #
     # Debugging configs.
     #

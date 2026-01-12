@@ -1,4 +1,5 @@
 import gym_aloha  # noqa: F401
+print(f"gym_aloha location: {gym_aloha.__file__}")
 import gymnasium
 import numpy as np
 from openpi_client import image_tools

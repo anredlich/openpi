@@ -37,6 +37,57 @@
                    ]
         },
         {
+            "name": "Python Debugger: serve_policy ALOHA_SIM_X",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                    "--env=ALOHA_SIM_X", //ALOHA_SIM", ALOHA_SIM_BASE
+                    //"--default_prompt='Transfer cube'",
+                   ]
+        },
+        {
+            "name": "Python Debugger: serve_policy ALOHA_SIM_TROSSEN_AI",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                    "--env=ALOHA_SIM_TROSSEN_AI", //see serve_policy.py
+                    //"--default_prompt='Transfer cube'",
+                   ]
+        },
+        {
+            "name": "Python Debugger: serve_policy ALOHA_SIM_TROSSEN_AI_FINETUNE",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "XLA_PYTHON_CLIENT_MEM_FRACTION": "0.9"
+            },
+            "args": [
+                    "--env=ALOHA_SIM_TROSSEN_AI_FINETUNE", //see serve_policy.py
+                    //"--default_prompt='Transfer cube'",
+                   ]
+        },
+        {
+            "name": "Python Debugger: serve_policy ALOHA_SIM_TROSSEN_AI_PI05",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                    "--env=ALOHA_SIM_TROSSEN_AI_PI05", //see serve_policy.py
+                    //"--default_prompt='Transfer cube'",
+                   ]
+        },
+        {
             "name": "Python Debugger: serve_policy ALOHA_SIM_LORA_FINETUNE",
             "type": "debugpy",
             "request": "launch",
@@ -82,6 +133,42 @@
             "justMyCode": false,
             "args": [
                     "--config-name=pi0_aloha_sim_low_mem_finetune",
+                    //"--max-frames=1000",
+                   ]
+        },
+        {
+            "name": "Python Debugger: compute_norm_stats pi0_aloha_sim_low_mem_finetune_v0",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                    "--config-name=pi0_aloha_sim_low_mem_finetune_v0",
+                    //"--max-frames=1000",
+                   ]
+        },
+        {
+            "name": "Python Debugger: compute_norm_stats pi0_aloha_sim_trossen_ai_mem_finetune_v2",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                    "--config-name=pi0_aloha_sim_trossen_ai_mem_finetune_v2",
+                    //"--max-frames=1000",
+                   ]
+        },
+        {
+            "name": "Python Debugger: compute_norm_stats pi05_aloha_sim_trossen_ai_lora",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                    "--config-name=pi05_aloha_sim_trossen_ai_lora",
                     //"--max-frames=1000",
                    ]
         },
@@ -151,5 +238,26 @@
             ],
             //"cwd": "${workspaceFolder}"
             },
+        {
+            "name": "Python Debugger: train pi0_aloha_sim_trossen_ai_mem_finetune",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            //"module": "uv",
+            "env": {
+                "XLA_PYTHON_CLIENT_MEM_FRACTION": "0.9"
+            },
+            "args": [
+                "pi0_aloha_sim_trossen_ai_mem_finetune_v2",
+                //"--exp-name=trossen_ai_stationary_x0",
+                "--exp-name=trossen_ai_stationary_x1",
+                //"--num_train_steps=300", //30_000
+                //"--batch_size=8", //256
+                //"--overwrite"
+            ],
+            //"cwd": "${workspaceFolder}"
+            },            
     ]
 }

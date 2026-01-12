@@ -61,8 +61,11 @@ def create_trained_policy(
         # that the policy is using the same normalization stats as the original training process.
         if data_config.asset_id is None:
             raise ValueError("Asset id is required to load norm stats.")
-        norm_stats = _checkpoints.load_norm_stats(checkpoint_dir / "assets", data_config.asset_id)
-
+        if data_config.norm_stats is None: #anr
+            norm_stats = _checkpoints.load_norm_stats(checkpoint_dir / "assets", data_config.asset_id)
+        else: #anr
+            norm_stats=data_config.norm_stats #anr
+            
     # Determine the device to use for PyTorch models
     if is_pytorch and pytorch_device is None:
         try:
