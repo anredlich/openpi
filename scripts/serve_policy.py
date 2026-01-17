@@ -88,7 +88,8 @@ DEFAULT_CHECKPOINT: dict[EnvMode, Checkpoint] = {
         #dir="gs://openpi-assets/checkpoints/pi0_base",
         #dir="gs://openpi-assets/checkpoints/pi05_base",
         #dir="./checkpoints/pi0_aloha_sim_trossen_ai_mem_finetune_v2/trossen_ai_stationary_x0/10000"
-        dir="./checkpoints/pi0_aloha_sim_trossen_ai_mem_finetune_v2/trossen_ai_stationary_x1/19999"
+        #dir="./checkpoints/pi0_aloha_sim_trossen_ai_mem_finetune_v2/trossen_ai_stationary_x1/19999"
+        dir="./checkpoints/hf_checkpoint"
     ),
     EnvMode.ALOHA_SIM_TROSSEN_AI_PI05: Checkpoint(
         config="pi05_aloha_sim_trossen_ai",

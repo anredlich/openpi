@@ -16,7 +16,7 @@ class Args:
     out_dir: pathlib.Path = pathlib.Path("data/aloha_sim/videos")
 
     task: str = "gym_aloha/TrossenAIStationaryTransferCube-v0" #AlohaTransferCube-v0"
-    seed: int = 19 #9
+    seed: int = 19
 
     action_horizon: int = 50 #10 #can be 1-50
 
@@ -25,6 +25,8 @@ class Args:
 
     display: bool = True
 
+    prompt: str | None = None #"pick up red cube" or use main.py --prompt "pick up red cube"
+
 
 def main(args: Args) -> None:
     runtime = _runtime.Runtime(
@@ -32,6 +34,7 @@ def main(args: Args) -> None:
             task=args.task,
             seed=args.seed,
             display=args.display,
+            prompt=args.prompt
         ),
         agent=_policy_agent.PolicyAgent(
             policy=action_chunk_broker.ActionChunkBroker(

@@ -217,6 +217,24 @@ def main(config: _config.TrainConfig):
     )
     init_wandb(config, resuming=resuming, enabled=config.wandb_enabled)
 
+########################################
+
+    # from lerobot.common.datasets.lerobot_dataset import LeRobotDataset
+
+    # dataset = LeRobotDataset("ANRedlich/trossen_ai_stationary_sim_transfer_40mm_cube_13")
+    # sample = dataset[0]
+
+    # for key in ['observation.images.cam_high', 'observation.images.cam_low']:
+    #     img = sample[key]
+    #     print(f"{key}: shape={img.shape}, dtype={img.dtype}, min={img.min():.3f}, max={img.max():.3f}")
+
+    # from lerobot.common.datasets.lerobot_dataset import LeRobotDatasetMetadata
+    # meta = LeRobotDatasetMetadata("ANRedlich/trossen_ai_stationary_sim_transfer_40mm_cube_13")
+    # print(meta.camera_keys)
+    # print(meta.shapes)
+    # #print(config.data.data_transforms)
+#######################################
+
     data_loader = _data_loader.create_data_loader(
         config,
         sharding=data_sharding,

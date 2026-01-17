@@ -1097,6 +1097,10 @@ _CONFIGS = [
         data=LeRobotAlohaDataConfig(
             #repo_id="ANRedlich/trossen_ai_stationary_sim_transfer_40mm_cube_07",
             repo_id="ANRedlich/trossen_ai_stationary_sim_transfer_40mm_cube_13",
+            assets=AssetsConfig( #note: only use this to over-ride default assets location
+                assets_dir="./checkpoints/hf_checkpoint/assets",
+                asset_id="ANRedlich/trossen_ai_stationary_sim_transfer_40mm_cube_13",
+            ),
             default_prompt="Transfer cube",
             use_delta_joint_actions=False,
             adapt_to_pi=False, #False for v1,v2 True for v0

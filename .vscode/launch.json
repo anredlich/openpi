@@ -252,7 +252,7 @@
             "args": [
                 "pi0_aloha_sim_trossen_ai_mem_finetune_v2",
                 //"--exp-name=trossen_ai_stationary_x0",
-                "--exp-name=trossen_ai_stationary_x1",
+                "--exp-name=trossen_ai_stationary_x2",
                 //"--num_train_steps=300", //30_000
                 //"--batch_size=8", //256
                 //"--overwrite"

@@ -11,16 +11,16 @@ import matplotlib.pyplot as plt
 class AlohaSimEnvironment(_environment.Environment):
     """An environment for an Aloha robot in simulation."""
 
-    def __init__(self, task: str, obs_type: str = "pixels_agent_pos", seed: int = 0, display: bool = False) -> None:
+    def __init__(self, task: str, obs_type: str = "pixels_agent_pos", seed: int = 0, display: bool = False, prompt: str | None = None) -> None:
         np.random.seed(seed)
         self._rng = np.random.default_rng(seed)
 
         #dir="./checkpoints/pi0_aloha_sim_trossen_ai_mem_finetune_v2/trossen_ai_stationary_x0/10000
-        #self._gym = gymnasium.make(task, obs_type=obs_type, max_episode_steps=600, box_size=[0.02,0.02,0.02]) #, tabletop='my_desktop')
+        self._gym = gymnasium.make(task, obs_type=obs_type, max_episode_steps=600, box_size=[0.02,0.02,0.02], box_color=[0,0,1,1]) #, tabletop='my_desktop')
 
         #dir="./checkpoints/pi0_aloha_sim_trossen_ai_mem_finetune_v2/trossen_ai_stationary_x1/19999"
-        self._gym = gymnasium.make(task, obs_type=obs_type, max_episode_steps=600,
-                                   box_size=[0.02,0.02,0.02], box_pos=[0,0,-0.02], tabletop='my_desktop', backdrop='my_backdrop', lighting=[[0.3,0.3,0.3],[0.3,0.3,0.3]])
+        #self._gym = gymnasium.make(task, obs_type=obs_type, max_episode_steps=600,
+        #                           box_size=[0.02,0.02,0.02], box_pos=[0,0,-0.02], tabletop='my_desktop', backdrop='my_backdrop', lighting=[[0.3,0.3,0.3],[0.3,0.3,0.3]])
 
         self._last_obs = None
         self._done = True
@@ -29,6 +29,7 @@ class AlohaSimEnvironment(_environment.Environment):
         self.display = display #anr
         self.plt_imgs = [] #anr
         self.steps = 0 #anr
+        self.prompt = prompt
 
         self.cam_list = ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist'] #anr
 
@@ -36,6 +37,8 @@ class AlohaSimEnvironment(_environment.Environment):
     def reset(self) -> None:
         gym_obs, _ = self._gym.reset(seed=int(self._rng.integers(2**32 - 1)))
         self._last_obs = self._convert_observation(gym_obs)  # type: ignore
+        if self.prompt is not None:
+            self._last_obs['prompt']=self.prompt
         self._done = False
         self._episode_reward = 0.0
         #self.cam_list = list(gym_obs["pixels"].keys()) #anr
@@ -70,18 +73,24 @@ class AlohaSimEnvironment(_environment.Environment):
     def apply_action(self, action: dict) -> None:
         gym_obs, reward, terminated, truncated, info = self._gym.step(action["actions"])
         self._last_obs = self._convert_observation(gym_obs)  # type: ignore
+        if self.prompt is not None:
+            self._last_obs['prompt']=self.prompt
         self._done = terminated or truncated or reward==5 #reward=5 is hack so either finger in transfer task is ok, anr 1/12/26
         self._episode_reward = max(self._episode_reward, reward)
 
         self.steps += 1
         #display #anr
         if self.display:
+            display_224=False
             #if "top" in gym_obs["pixels"]:
             #    cam_list = ["top"]
             #else:
             #    cam_list = ["cam_high"]
             for i in range(len(self.cam_list)):
-                self.plt_imgs[i].set_data(gym_obs['pixels'][self.cam_list[i]])
+                if not display_224:
+                    self.plt_imgs[i].set_data(gym_obs['pixels'][self.cam_list[i]])
+                else:
+                    self.plt_imgs[i].set_data(np.transpose(self._last_obs['images'][self.cam_list[i]],(1,2,0)))
             plt.pause(0.02)
             print(f"step= {self.steps} reward={reward}")
 
