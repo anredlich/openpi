@@ -281,8 +281,9 @@ def main(config: _config.TrainConfig):
         if step % config.log_interval == 0:
             stacked_infos = common_utils.stack_forest(infos)
             reduced_info = jax.device_get(jax.tree.map(jnp.mean, stacked_infos))
+            current_lr = config.lr_schedule.create()(step)
             info_str = ", ".join(f"{k}={v:.4f}" for k, v in reduced_info.items())
-            pbar.write(f"Step {step}: {info_str}")
+            pbar.write(f"Step {step}: {info_str}, lr={current_lr:.2e}")
             wandb.log(reduced_info, step=step)
             infos = []
         batch = next(data_iter)

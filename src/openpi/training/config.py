@@ -1097,11 +1097,13 @@ _CONFIGS = [
         data=LeRobotAlohaDataConfig(
             #repo_id="ANRedlich/trossen_ai_stationary_sim_transfer_40mm_cube_07",
             repo_id="ANRedlich/trossen_ai_stationary_sim_transfer_40mm_cube_13",
-            assets=AssetsConfig( #note: only use this to over-ride default assets location
-                assets_dir="./checkpoints/hf_checkpoint/assets",
-                asset_id="ANRedlich/trossen_ai_stationary_sim_transfer_40mm_cube_13",
-            ),
+            #repo_id="ANRedlich/trossen_ai_stationary_place_lids_04",
+            #assets=AssetsConfig( #note: only use this to over-ride default assets location
+            #    assets_dir="./checkpoints/hf_checkpoint/assets",
+            #    asset_id="ANRedlich/trossen_ai_stationary_sim_transfer_40mm_cube_13",
+            #),
             default_prompt="Transfer cube",
+            #default_prompt="place lid on pot",
             use_delta_joint_actions=False,
             adapt_to_pi=False, #False for v1,v2 True for v0
             adapt_trossen_to_pi=True, #True for v2 norm but by mistake not for ..._07 checkpoint
@@ -1121,14 +1123,20 @@ _CONFIGS = [
                     )
                 ]
             ),
-       ),       
-       weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
-       num_train_steps=20_000,
-       freeze_filter=pi0_config.Pi0Config(
+        ),       
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
+        #lr_schedule=_optimizer.CosineDecaySchedule(
+        #    warmup_steps=1_000,
+        #    peak_lr=6e-5, #2.5e-5,
+        #    decay_steps=60_000, #100_000,
+        #    decay_lr=2.5e-6,
+        #),
+        num_train_steps=20_000, #40_000,#20_000,
+        freeze_filter=pi0_config.Pi0Config(
            paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"
-       ).get_freeze_filter(),
-       # Turn off EMA for LoRA finetuning.
-       ema_decay=None,
+        ).get_freeze_filter(),
+        # Turn off EMA for LoRA finetuning.
+        ema_decay=None,
    ),
     #
     # ALOHA Sim Trossen configs. This config is used to demonstrate how to train on the trossen ai simulated environment.

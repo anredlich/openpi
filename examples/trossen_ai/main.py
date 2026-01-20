@@ -48,13 +48,16 @@ class TrossenOpenPIBridge:
         control_frequency: int = 30,
         test_mode: str = "autonomous",  # "autonomous" or "test"
         max_steps: int = 1000,
+        action_chunk_size: int = 50,
+        max_relative_target: float = 0.05,
+        adjust_for_sim_to_real: bool = False,
     ):
         self.control_frequency = control_frequency
         self.max_steps = max_steps
         self.dt = 1.0 / control_frequency
         self.test_mode = test_mode
 
-        self.adjust_for_sim_to_real = True #hack to adjust joints to better match sim to real
+        self.adjust_for_sim_to_real = adjust_for_sim_to_real #False #hack to adjust joints to better match sim to real
         self.display = True
 
         logger.info(f"Connecting to policy server at {policy_server_host}:{policy_server_port}")
@@ -86,8 +89,8 @@ class TrossenOpenPIBridge:
                     #         "--robot.max_relative_target=0.05", //0.025", //0.1", //0.025", //0.05", //0.1",
                     # //"--robot.home_pose=[0, 0, 0, 0, 0, 0, 0.05]", //BIG dataset3 and policy=act_trossen_ai_stationary_real_01
                     # "--robot.home_pose=[0, 0.261799, 0.261799, 0, 0, 0, 0.044]", //all sim policies: START_ARM_POSE_TROSSEN_AI_STATIONARY
-# 
-        robot_config=TrossenAIStationaryRobotConfig(max_relative_target=0.05,home_pose=[0, 0.261799, 0.261799, 0, 0, 0, 0.044])
+ 
+        robot_config=TrossenAIStationaryRobotConfig(max_relative_target,home_pose=[0, 0.261799, 0.261799, 0, 0, 0, 0.044]) #max_relative_target=0.05
         self.robot = make_robot_from_config(robot_config)
         self.robot.leader_arms = {} #[]
         self.robot.connect()
@@ -95,11 +98,11 @@ class TrossenOpenPIBridge:
         self.current_action_chunk = None
         self.action_chunk_idx = 0
         self.action_chunk_size = (
-            50  # Number of actions per chunk from the policy (Defined by the policy server in this case 50)
+            action_chunk_size #50  # Number of actions per chunk from the policy (Defined by the policy server in this case 50)
         )
         self.episode_step = 0
         self.is_running = False
-        self.rate_of_inference = 50  # Number of control steps per policy inference (matches README and Pi-0 paper)
+        self.rate_of_inference = self.action_chunk_size #50  # Number of control steps per policy inference (matches README and Pi-0 paper)
 
         self.temporal_ensemble_coefficient = None  # Temporal ensembling weight (can be set to None for no ensembling)
 
@@ -307,8 +310,11 @@ if __name__ == "__main__":
         default="autonomous",
         help="Operation mode: autonomous (execute) or test (no movement)",
     )
-    parser.add_argument("--task_prompt", default="Transfer cube", help="Task description for the policy") #default="move the arm to the left", help="Task description for the policy")
+    parser.add_argument("--task_prompt", default="Transfer cube", help="Task description for the policy") # default="place lid on pot"#default="Transfer cube" #default="move the arm to the left", help="Task description for the policy")
     parser.add_argument("--max_steps", type=int, default=1000, help="Maximum steps per episode")
+    parser.add_argument("--action_chunk_size", type=int, default=50, help="Action chunk size to call and use")
+    parser.add_argument("--max_relative_target", type=float, default=0.05, help="Max delta action for robot safety and stability")
+    parser.add_argument("--adjust_for_sim_to_real", type=bool, default=False, help="True for sim to real")
     args = parser.parse_args()
 
     bridge = TrossenOpenPIBridge(
@@ -317,6 +323,9 @@ if __name__ == "__main__":
         control_frequency=args.control_freq,
         test_mode=args.mode,
         max_steps=args.max_steps,
+        action_chunk_size=args.action_chunk_size,
+        max_relative_target=args.max_relative_target,
+        adjust_for_sim_to_real=args.adjust_for_sim_to_real,
     )
 
     bridge.autonomous_mode(task_prompt=args.task_prompt)

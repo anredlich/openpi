@@ -25,6 +25,21 @@
                    ]
         },
         {
+            "name": "Python Debugger: main trossen_ai",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                    "--task_prompt='place lid on pot'", //default='Transfer cube'
+                    "--max_steps=2000", //default=1000
+                    "--action_chunk_size=50", //default=50
+                    "--max_relative_target=0.1", //default=0.05
+                    //"--adjust_for_sim_to_real=True", //default=False
+                ]
+        },
+        {
             "name": "Python Debugger: serve_policy ALOHA_SIM",
             "type": "debugpy",
             "request": "launch",
@@ -252,10 +267,12 @@
             "args": [
                 "pi0_aloha_sim_trossen_ai_mem_finetune_v2",
                 //"--exp-name=trossen_ai_stationary_x0",
-                "--exp-name=trossen_ai_stationary_x2",
+                "--exp-name=trossen_ai_stationary_x3",
                 //"--num_train_steps=300", //30_000
                 //"--batch_size=8", //256
                 //"--overwrite"
+                "--no-wandb-enabled",
+                //"--resume",
             ],
             //"cwd": "${workspaceFolder}"
             },            
