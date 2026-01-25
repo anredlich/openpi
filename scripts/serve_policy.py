@@ -20,6 +20,7 @@ class EnvMode(enum.Enum):
     ALOHA_SIM_TROSSEN_AI = "aloha_sim_trossen_ai"
     ALOHA_SIM_TROSSEN_AI_PI05 = "aloha_sim_trossen_ai_pi05"
     ALOHA_SIM_TROSSEN_AI_FINETUNE = "aloha_sim_trossen_ai_finetune"
+    ALOHA_SIM_TROSSEN_AI_FULL_FINETUNE = "aloha_sim_trossen_ai_full_finetune"
     ALOHA_SIM_LORA_FINETUNE = "aloha_sim_low_mem_finetune"
     DROID = "droid"
     LIBERO = "libero"
@@ -88,11 +89,17 @@ DEFAULT_CHECKPOINT: dict[EnvMode, Checkpoint] = {
         #dir="gs://openpi-assets/checkpoints/pi0_base",
         #dir="gs://openpi-assets/checkpoints/pi05_base",
         #dir="./checkpoints/pi0_aloha_sim_trossen_ai_mem_finetune_v2/trossen_ai_stationary_x0/10000"
-        #dir="./checkpoints/pi0_aloha_sim_trossen_ai_mem_finetune_v2/trossen_ai_stationary_x1/19999"
-        #dir="./checkpoints/pi0_aloha_sim_trossen_ai_mem_finetune_v2/trossen_ai_stationary_x2/19999"
-        #dir="./checkpoints/pi0_aloha_sim_trossen_ai_mem_finetune_v2/trossen_ai_stationary_x2/39999"
-        dir="./checkpoints/pi0_aloha_sim_trossen_ai_mem_finetune_v2/trossen_ai_stationary_x2/59999"
+        #dir="./checkpoints/pi0_aloha_sim_trossen_ai_mem_finetune_v2/trossen_ai_stationary_x1/19999" #trossen_ai_stationary_sim_pi013
+        #dir="./checkpoints/pi0_aloha_sim_trossen_ai_mem_finetune_v2/trossen_ai_stationary_x3/19999" #trossen_ai_stationary_sim_pi013
+        #dir="./checkpoints/pi0_aloha_sim_trossen_ai_mem_finetune_v2/trossen_ai_stationary_x2/19999" #trossen_ai_stationary_place_lids_04
+        #dir="./checkpoints/pi0_aloha_sim_trossen_ai_mem_finetune_v2/trossen_ai_stationary_x2/39999" #trossen_ai_stationary_place_lids_04
+        #dir="./checkpoints/pi0_aloha_sim_trossen_ai_mem_finetune_v2/trossen_ai_stationary_x2/59999" #trossen_ai_stationary_place_lids_04
+        dir="./checkpoints/pi0_aloha_sim_trossen_ai_mem_finetune_v2/trossen_ai_stationary_x4/9999" #act_trossen_ai_stationary_real_03
         #dir="./checkpoints/hf_checkpoint"
+    ),
+    EnvMode.ALOHA_SIM_TROSSEN_AI_FULL_FINETUNE: Checkpoint(
+        config="pi0_aloha_sim_trossen_ai_full_finetune_v0",
+        dir="./checkpoints/pi0_aloha_sim_trossen_ai_full_finetune_v0/trossen_ai_stationary_x5/19999" #trossen_ai_stationary_place_lids_04
     ),
     EnvMode.ALOHA_SIM_TROSSEN_AI_PI05: Checkpoint(
         config="pi05_aloha_sim_trossen_ai",
