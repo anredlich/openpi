@@ -1097,12 +1097,13 @@ _CONFIGS = [
         data=LeRobotAlohaDataConfig(
             #repo_id="ANRedlich/trossen_ai_stationary_sim_transfer_40mm_cube_07",
             #repo_id="ANRedlich/trossen_ai_stationary_sim_transfer_40mm_cube_13",
-            repo_id="ANRedlich/trossen_ai_stationary_transfer_multi_cube_03",
-            #repo_id="ANRedlich/trossen_ai_stationary_place_lids_04",
+            #repo_id="ANRedlich/trossen_ai_stationary_transfer_multi_cube_03",
+            repo_id="ANRedlich/trossen_ai_stationary_place_lids_04",
             #assets=AssetsConfig( #note: only use this to over-ride default assets location
             #    assets_dir="./checkpoints/hf_checkpoint/assets",
             #    asset_id="ANRedlich/trossen_ai_stationary_sim_transfer_40mm_cube_13",
             #),
+            #base_config=DataConfig(prompt_from_task=True), #add for individual task prompts
             default_prompt="Transfer cube",
             #default_prompt="place lid on pot",
             use_delta_joint_actions=False,
@@ -1120,6 +1121,7 @@ _CONFIGS = [
                             },
                             "state": "observation.state",
                             "actions": "action",
+                            #"prompt": "prompt", #add for individual task prompts
                         }
                     )
                 ]
@@ -1139,6 +1141,93 @@ _CONFIGS = [
         # Turn off EMA for LoRA finetuning.
         ema_decay=None,
    ),
+    #
+    # ALOHA Sim Trossen configs. This config is used to demonstrate how to train on the trossen ai simulated environment.
+    # This version v3 is designed to do full fine tuning with multiple task prompts, and initially to create norm stats for the newer trossen ai stationary robot.
+    #
+    TrainConfig(
+        name="pi0_aloha_sim_trossen_ai_mem_finetune_v3", #the name is wrong, this is actually a full fine tune!
+        model=pi0_config.Pi0Config(),
+        #model=pi0_config.Pi0Config(paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"),
+        data=LeRobotAlohaDataConfig(
+            repo_id="ANRedlich/trossen_ai_stationary_pick_and_place_07",
+            #assets=AssetsConfig( #note: only use this to over-ride default assets location
+            #    assets_dir="./checkpoints/hf_checkpoint/assets",
+            #    asset_id="ANRedlich/trossen_ai_stationary_sim_transfer_40mm_cube_13",
+            #),
+            base_config=DataConfig(prompt_from_task=True), #add for individual task prompts
+            default_prompt="pick and place",
+            use_delta_joint_actions=False,
+            adapt_to_pi=False, #False for v1,v2 True for v0
+            adapt_trossen_to_pi=True, #True for v2 norm but by mistake not for ..._07 checkpoint
+            repack_transforms=_transforms.Group(
+                inputs=[
+                    _transforms.RepackTransform(
+                        {
+                            "images": {
+                                "cam_high": "observation.images.cam_high",
+                                "cam_low": "observation.images.cam_low",
+                                "cam_left_wrist": "observation.images.cam_left_wrist",
+                                "cam_right_wrist": "observation.images.cam_right_wrist",
+                            },
+                            "state": "observation.state",
+                            "actions": "action",
+                            "prompt": "prompt", #add for individual task prompts
+                        }
+                    )
+                ]
+            ),
+        ),       
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
+        #lr_schedule=_optimizer.CosineDecaySchedule(
+        #    warmup_steps=1_000,
+        #    peak_lr=6e-5, #2.5e-5,
+        #    decay_steps=60_000, #100_000,
+        #    decay_lr=2.5e-6,
+        #),
+        num_train_steps=20_000, #40_000,#20_000,
+        #freeze_filter=pi0_config.Pi0Config(
+        #   paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"
+        #).get_freeze_filter(),
+        # Turn off EMA for LoRA finetuning.
+        #ema_decay=None,
+    ),
+    #
+    # ALOHA Sim Trossen configs. This config is used to demonstrate how to train on the trossen ai simulated environment.
+    # This version v4 (redo of v3!) is designed to do full fine tuning with multiple task prompts, and initially to create norm stats for the newer trossen ai stationary robot.
+    #
+    TrainConfig(
+        name="pi0_aloha_sim_trossen_ai_full_finetune_v4",
+        model=pi0_config.Pi0Config(),
+        data=LeRobotAlohaDataConfig(
+            repo_id="ANRedlich/trossen_ai_stationary_pick_and_place_07",
+            base_config=DataConfig(prompt_from_task=True), #add for individual task prompts
+            default_prompt="pick and place",
+            use_delta_joint_actions=False,
+            adapt_to_pi=False, #False for v1,v2 True for v0
+            adapt_trossen_to_pi=True, #True for v2 norm but by mistake not for ..._07 checkpoint
+            repack_transforms=_transforms.Group(
+                inputs=[
+                    _transforms.RepackTransform(
+                        {
+                            "images": {
+                                "cam_high": "observation.images.cam_high",
+                                "cam_low": "observation.images.cam_low",
+                                "cam_left_wrist": "observation.images.cam_left_wrist",
+                                "cam_right_wrist": "observation.images.cam_right_wrist",
+                            },
+                            "state": "observation.state",
+                            "actions": "action",
+                            "prompt": "prompt", #add for individual task prompts
+                        }
+                    )
+                ]
+            ),
+        ),       
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
+        num_train_steps=20_000, #40_000,#20_000,
+        save_interval=5000,
+    ),
     #
     # ALOHA Sim Trossen configs. This config is used to demonstrate how to train on the trossen ai simulated environment.
     # This is designed to do full fine tuning, and initially to create norm stats for the newer trossen ai stationary robot.

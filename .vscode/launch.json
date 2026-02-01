@@ -32,11 +32,13 @@
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
-                    "--task_prompt='place lid on pot'", //default='Transfer cube'
+                    //"--task_prompt='place lid on pot'", //default='Transfer cube'
                     //"--task_prompt='Transfer cube'",
+                    //"--task_prompt='pick up yellow cube and place in silver pan'",
+                    "--task_prompt='pick up white cube and place in silver pan'",
                     "--max_steps=1000", //default=1000
                     "--action_chunk_size=50", //default=50
-                    "--max_relative_target=0.1", //default=0.05
+                    "--max_relative_target=0.25", //0.1", //default=0.05
                     //"--adjust_for_sim_to_real=True", //default=False
                 ]
         },
@@ -88,6 +90,21 @@
             },
             "args": [
                     "--env=ALOHA_SIM_TROSSEN_AI_FINETUNE", //see serve_policy.py
+                    //"--default_prompt='Transfer cube'",
+                   ]
+        },
+        {
+            "name": "Python Debugger: serve_policy ALOHA_SIM_TROSSEN_AI_FULL_FINETUNE",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "XLA_PYTHON_CLIENT_MEM_FRACTION": "0.9"
+            },
+            "args": [
+                    "--env=ALOHA_SIM_TROSSEN_AI_FULL_FINETUNE", //see serve_policy.py
                     //"--default_prompt='Transfer cube'",
                    ]
         },
@@ -177,14 +194,27 @@
                    ]
         },
         {
-            "name": "Python Debugger: compute_norm_stats pi0_aloha_sim_trossen_ai_full_finetune_v0",
+            "name": "Python Debugger: compute_norm_stats pi0_aloha_sim_trossen_ai_mem_finetune_v3",
             "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
-                    "--config-name=pi0_aloha_sim_trossen_ai_full_finetune_v0",
+                    "--config-name=pi0_aloha_sim_trossen_ai_mem_finetune_v3",
+                    //"--max-frames=1000",
+                   ]
+        },
+        {
+            "name": "Python Debugger: compute_norm_stats pi0_aloha_sim_trossen_ai_full_finetune",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                    //"--config-name=pi0_aloha_sim_trossen_ai_full_finetune_v0",
+                    "--config-name=pi0_aloha_sim_trossen_ai_full_finetune_v4",
                     //"--max-frames=1000",
                    ]
         },
@@ -278,9 +308,9 @@
                 "XLA_PYTHON_CLIENT_MEM_FRACTION": "0.9"
             },
             "args": [
-                "pi0_aloha_sim_trossen_ai_mem_finetune_v2",
-                //"--exp-name=trossen_ai_stationary_x0",
-                "--exp-name=trossen_ai_stationary_x3",
+                //"pi0_aloha_sim_trossen_ai_mem_finetune_v2",
+                "pi0_aloha_sim_trossen_ai_mem_finetune_v3",
+                "--exp-name=trossen_ai_stationary_x6",
                 //"--num_train_steps=300", //30_000
                 //"--batch_size=8", //256
                 //"--overwrite"
