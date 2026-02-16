@@ -1200,7 +1200,8 @@ _CONFIGS = [
         name="pi0_aloha_sim_trossen_ai_full_finetune_v4",
         model=pi0_config.Pi0Config(),
         data=LeRobotAlohaDataConfig(
-            repo_id="ANRedlich/trossen_ai_stationary_pick_and_place_07",
+            #repo_id="ANRedlich/trossen_ai_stationary_pick_and_place_07",
+            repo_id="ANRedlich/trossen_ai_stationary_pick_and_place_08",
             base_config=DataConfig(prompt_from_task=True), #add for individual task prompts
             default_prompt="pick and place",
             use_delta_joint_actions=False,
