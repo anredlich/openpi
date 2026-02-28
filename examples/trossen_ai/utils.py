@@ -17,7 +17,13 @@ import time
 from enum import IntEnum
 import traceback
 from functools import cache
-
+from gtts import gTTS
+import pygame
+import tempfile
+import os
+import threading
+import subprocess
+import threading
 
 class SlateBaseSystemState(IntEnum):
     SYS_INIT = 0x00
@@ -144,3 +150,50 @@ def init_keyboard_listener():
     listener.start()
 
     return listener, events
+
+# def say_gtts(text, blocking=False, lang='en'):
+#     """Uses Google Text-to-Speech"""
+#     try:
+#         tts = gTTS(text=text, lang=lang, slow=False)
+        
+#         with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as tmp_file:
+#             tts.save(tmp_file.name)
+            
+#             pygame.mixer.init()
+#             pygame.mixer.music.load(tmp_file.name)
+#             pygame.time.wait(1000)
+#             pygame.mixer.music.play()
+            
+#             if blocking:
+#                 while pygame.mixer.music.get_busy():
+#                     pygame.time.wait(100)
+            
+#             os.unlink(tmp_file.name)
+            
+#     except Exception as e:
+#         print(f"Google TTS failed: {e}")
+
+def say_gtts(text, blocking=False, lang='en'):
+    """Uses Google Text-to-Speech"""
+    def _speak():
+        try:
+            import os
+            os.environ['SDL_AUDIODRIVER'] = 'alsa'
+            os.environ['AUDIODEV'] = 'plughw:0,3'
+            tts = gTTS(text=text, lang=lang, slow=False)
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as tmp_file:
+                tts.save(tmp_file.name)
+            pygame.mixer.init()
+            pygame.mixer.music.load(tmp_file.name)
+            pygame.time.wait(1000)
+            pygame.mixer.music.play()
+            while pygame.mixer.music.get_busy():
+                pygame.time.wait(100)
+            os.unlink(tmp_file.name)
+        except Exception as e:
+            print(f"Google TTS failed: {e}")
+    
+    if blocking:
+        _speak()
+    else:
+        threading.Thread(target=_speak, daemon=True).start()

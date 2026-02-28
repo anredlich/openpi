@@ -104,7 +104,8 @@ DEFAULT_CHECKPOINT: dict[EnvMode, Checkpoint] = {
         #dir="./checkpoints/pi0_aloha_sim_trossen_ai_full_finetune_v0/trossen_ai_stationary_x5/19999" #trossen_ai_stationary_place_lids_04
         #dir="./checkpoints/pi0_aloha_sim_trossen_ai_mem_finetune_v3/trossen_ai_stationary_x6/19999" #trossen_ai_stationary_pick_and_place_07
         #dir="./checkpoints/pi0_aloha_sim_trossen_ai_mem_finetune_v3/trossen_ai_stationary_x6/39999" #trossen_ai_stationary_pick_and_place_07
-        dir="./checkpoints/pi0_aloha_sim_trossen_ai_full_finetune_v4/trossen_ai_stationary_x7/19999" #trossen_ai_stationary_pick_and_place_07
+        #dir="./checkpoints/pi0_aloha_sim_trossen_ai_full_finetune_v4/trossen_ai_stationary_x7/19999" #trossen_ai_stationary_pick_and_place_07
+        dir="./checkpoints/pi0_aloha_sim_trossen_ai_full_finetune_v4/trossen_ai_stationary_x8/19999" #trossen_ai_stationary_pick_and_place_08
     ),
     EnvMode.ALOHA_SIM_TROSSEN_AI_PI05: Checkpoint(
         config="pi05_aloha_sim_trossen_ai",

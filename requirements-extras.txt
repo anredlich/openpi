@@ -1,0 +1,9 @@
+# Extra dependencies for Gemini robotics integration, speech-to-text, and TTS
+# Install with: uv pip install -r requirements-extras.txt
+google-genai
+gtts
+pygame
+faster-whisper
+silero-vad
+sounddevice
+rerun-sdk==0.23.1

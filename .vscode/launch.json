@@ -35,11 +35,14 @@
                     //"--task_prompt='place lid on pot'", //default='Transfer cube'
                     //"--task_prompt='Transfer cube'",
                     //"--task_prompt='pick up yellow cube and place in silver pan'",
-                    "--task_prompt='pick up white cube and place in silver pan'",
-                    "--max_steps=1000", //default=1000
+                    //"--task_prompt='pick up white cube and place in silver pan'",
+                    "--task_prompt='pick up red cube and place in green bucket'",
+                    "--max_steps=5000", //default=1000
                     "--action_chunk_size=50", //default=50
-                    "--max_relative_target=0.25", //0.1", //default=0.05
+                    "--max_relative_target=1.0", //0.25", //0.1", //default=0.05
                     //"--adjust_for_sim_to_real=True", //default=False
+                    "--high_level_task=Pick up all the cubes on the table and place them in the green bucket",
+                    "--control_mode=gemini_auto", //speech speech_narrate speech_objects gemini_auto   
                 ]
         },
         {

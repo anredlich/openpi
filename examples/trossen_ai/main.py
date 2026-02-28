@@ -33,8 +33,13 @@ from openpi_client import websocket_client_policy
 from scipy.interpolate import PchipInterpolator
 from utils import init_keyboard_listener
 import openpi_client.image_tools as image_tools
+#from voice_command import VoiceCommandListener
+from utils import say_gtts
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("google").setLevel(logging.WARNING)
+logging.getLogger("google_genai").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
@@ -115,6 +120,14 @@ class TrossenOpenPIBridge:
         #self.action_dim = len(self.robot._joint_ft)  # 7 joints per arm * 2 arms
         self.action_dim = len(self.robot.features['action']['names'])
 
+        #speech listener
+        self.speech_listener = None
+        self.gemini_planner = None
+        self.gemini_annotated_frame = None
+        self.gemini_running = False
+        self.gemini_next_prompt = None
+        self.control_mode = "speech"  # default, overridden from __main__
+
     def execute_action(self, action: np.ndarray):
         """Execute action on the arm."""
         full_action = action.copy()
@@ -161,7 +174,7 @@ class TrossenOpenPIBridge:
 
     def run_episode(self, task_prompt: str = "look down"):
         """Run a single episode of policy execution."""
-        logger.info(f"Starting episode with prompt: '{task_prompt}'")
+        #logger.info(f"Starting episode with prompt: '{task_prompt}'")
         self.episode_step = 0
         self.action_chunk_idx = 0
         self.current_action_chunk = None
@@ -177,8 +190,229 @@ class TrossenOpenPIBridge:
             #cv2.resizeWindow(cam, 224, 224)
             cv2.resizeWindow(cam, 640, 480)
 
+        if self.gemini_planner:
+            cv2.namedWindow("gemini_view", cv2.WINDOW_NORMAL)
+            cv2.resizeWindow("gemini_view", 640, 480)
+            gemini_high_cam = [c for c in camera_features if 'high' in c][0]
+            gemini_low_cam = [c for c in camera_features if 'low' in c][0]
+
+            # Synchronous first Gemini call in auto mode to get initial task
+            if self.control_mode == "gemini_auto":
+                logger.info("Starting autonomous mode")
+                obs = self.robot.capture_observation()
+                #img_rgb = obs[gemini_high_cam].numpy()
+                gemini_images = {
+                    'cam_high': obs[gemini_high_cam].numpy(),
+                    'cam_low': obs[gemini_low_cam].numpy(),
+                }
+                try:
+                    #new_task, narration, objects = self.gemini_planner.plan_next_task(img_rgb, self.gemini_planner.allowed_prompts)
+                    new_task, narration, objects = self.gemini_planner.plan_next_task(gemini_images, self.gemini_planner.allowed_prompts)
+                    if narration:
+                        logger.info(f"Gemini: {narration}")
+                    if new_task:
+                        task_prompt = new_task
+                        logger.info(f"'{task_prompt}'")
+                        say_gtts(task_prompt)
+                        print()
+                    #self.gemini_annotated_frame = self.gemini_planner.draw_annotations(img_rgb, objects)
+                    self.gemini_annotated_frame = self.gemini_planner.draw_annotations(gemini_images['cam_high'], objects)
+                except Exception as e:
+                    logger.warning(f"Gemini initial query failed: {e}")
+
+        #speech to text
+        # if not self.speech_listener: # and not self.gemini_planner:
+        #     from voice_command import VoiceCommandListener
+        #     self.speech_listener = VoiceCommandListener()
+        # if self.speech_listener:
+        #     colors = ['red','blue','pink','yellow','brown']
+        #     template = "pick up {} cube and place in green bucket"
+        #     self.speech_listener.start()
+        #     while True:
+        #         command = self.speech_listener.get_command_blocking(timeout=1.0)
+        #         if command:
+        #             print(f"\n  >> COMMAND READY: \"{command}\"\n")
+        #             color = next((c for c in colors if c in command), None)
+        #             if color:
+        #                 task_prompt=template.format(color)
+        #                 logger.info(f"'{task_prompt}'")
+        #             break
+        #speech to text
+        colors = ['red','blue','pink','yellow','brown']
+        template = "pick up {} cube and place in green bucket"
+        if self.control_mode in ("speech", "speech_narrate", "speech_objects"):
+            if not self.speech_listener:
+                from voice_command import VoiceCommandListener
+                self.speech_listener = VoiceCommandListener()
+            self.speech_listener.start()
+            while True:
+                command = self.speech_listener.get_command_blocking(timeout=1.0)
+                if command:
+                    print(f"\n  >> COMMAND READY: \"{command}\"\n")
+                    color = next((c for c in colors if c in command), None)
+                    if color:
+                        task_prompt=template.format(color)
+                        logger.info(f"'{task_prompt}'")
+                    break
+
         while self.is_running and self.episode_step < self.max_steps:
             start_loop_time = time.perf_counter()
+
+            # if self.speech_listener:
+            #     command = self.speech_listener.get_command() #_blocking(timeout=1.0)
+            #     if command:
+            #         print(f"\n  >> COMMAND READY: \"{command}\"\n")
+            #         color = next((c for c in colors if c in command), None)
+            #         if color:
+            #             task_prompt=template.format(color)
+            #             logger.info(f"'{task_prompt}'")
+            #         elif 'exit' in command.lower() or 'stop' in command.lower():
+            #             break
+            if self.speech_listener:
+                command = self.speech_listener.get_command()
+                if command:
+                    print(f"\n  >> COMMAND READY: \"{command}\"\n")
+                    color = next((c for c in colors if c in command.lower()), None)
+                    if color:
+                        task_prompt=template.format(color)
+                        logger.info(f"'{task_prompt}'")
+                    elif 'exit' in command.lower() or 'stop' in command.lower():
+                        break
+
+            # if self.gemini_planner and self.gemini_planner.should_query(): #self.episode_step
+            #     try:
+            #         obs = self.robot.capture_observation()
+            #         images = self.gemini_planner.get_images_from_observation(obs, camera_features)
+            #         new_prompt = self.gemini_planner.query(images)
+            #         if new_prompt != task_prompt:
+            #             task_prompt = new_prompt
+            #             logger.info(f"Gemini new prompt: '{task_prompt}'")
+            #     except Exception as e:
+            #         logger.warning(f"Gemini query failed: {e}")task_prompt
+
+            # if self.gemini_planner and self.gemini_planner.should_query():
+            #     try:
+            #         obs = self.robot.capture_observation()
+            #         img_rgb = obs[gemini_high_cam].numpy()
+            #         narration, objects = self.gemini_planner.narrate_and_annotate(img_rgb, task_prompt)
+            #         if narration:
+            #             logger.info(f"Gemini: {narration}")
+            #         annotated = self.gemini_planner.draw_annotations(img_rgb, objects)
+            #         cv2.imshow("gemini_view", annotated)
+            #         cv2.waitKey(1)
+            #     except Exception as e:
+            #         logger.warning(f"Gemini query failed: {e}")
+
+            # if self.gemini_planner and self.gemini_planner.should_query() and not self.gemini_running:
+            #     import threading
+            #     obs = self.robot.capture_observation()
+            #     img_rgb = obs[gemini_high_cam].numpy()
+            #     def _gemini_worker(img, task):
+            #         self.gemini_running = True
+            #         try:
+            #             narration, objects = self.gemini_planner.narrate_and_annotate(img, task)
+            #             if narration:
+            #                 logger.info(f"Gemini: {narration}")
+            #             self.gemini_annotated_frame = self.gemini_planner.draw_annotations(img, objects)
+            #         except Exception as e:
+            #             logger.warning(f"Gemini query failed: {e}")
+            #         finally:
+            #             self.gemini_running = False
+            #     threading.Thread(target=_gemini_worker, args=(img_rgb, task_prompt), daemon=True).start()
+
+            # if self.gemini_annotated_frame is not None:
+            #     cv2.imshow("gemini_view", self.gemini_annotated_frame)
+            #     cv2.waitKey(1)
+
+            #if self.gemini_planner and self.gemini_planner.should_query() and not self.gemini_running:
+            if self.gemini_planner and self.gemini_planner.should_query() and not self.gemini_running:                
+                import threading
+                obs = self.robot.capture_observation()
+                #img_rgb = obs[gemini_high_cam].numpy()
+                gemini_images = {
+                    'cam_high': obs[gemini_high_cam].numpy(),
+                    'cam_low': obs[gemini_low_cam].numpy(),
+                }
+
+                # if self.control_mode == "speech_narrate":
+                #     def _gemini_worker(img, task):
+                #         self.gemini_running = True
+                #         try:
+                #             #narration, objects = self.gemini_planner.narrate_and_annotate(img, task)
+                #             narration, objects, success = self.gemini_planner.narrate_and_annotate(img, task)
+                #             if success:
+                #                 logger.info(f"Gemini: Task succeeded! '{task}'")
+                #             if narration:
+                #                 logger.info(f"Gemini: {narration}")
+                #             #self.gemini_annotated_frame = self.gemini_planner.draw_annotations(img, objects)
+                #             self.gemini_annotated_frame = self.gemini_planner.draw_annotations(img['cam_high'], objects)
+                #         except Exception as e:
+                #             logger.warning(f"Gemini query failed: {e}")
+                #         finally:
+                #             self.gemini_running = False
+                #     #threading.Thread(target=_gemini_worker, args=(img_rgb, task_prompt), daemon=True).start()
+                #     threading.Thread(target=_gemini_worker, args=(gemini_images, task_prompt), daemon=True).start()
+                if self.control_mode == "speech_narrate":
+                    def _gemini_worker(img, task):
+                        self.gemini_running = True
+                        try:
+                            narration, objects, success = self.gemini_planner.narrate_and_annotate(img, task)
+                            if success:
+                                logger.info(f"Gemini: Task succeeded! '{task}'")
+                            if narration:
+                                logger.info(f"Gemini: {narration}")
+                            self.gemini_annotated_frame = self.gemini_planner.draw_annotations(img['cam_high'], objects)
+                        except Exception as e:
+                            logger.warning(f"Gemini query failed: {e}")
+                        finally:
+                            self.gemini_running = False
+                    threading.Thread(target=_gemini_worker, args=(gemini_images, task_prompt), daemon=True).start()
+
+                elif self.control_mode == "speech_objects":
+                    def _gemini_worker(img, task):
+                        self.gemini_running = True
+                        try:
+                            narration, objects = self.gemini_planner.detect_objects(img, task)
+                            if narration:
+                                logger.info(f"Gemini: {narration}")
+                            self.gemini_annotated_frame = self.gemini_planner.draw_annotations(img['cam_high'], objects)
+                        except Exception as e:
+                            logger.warning(f"Gemini query failed: {e}")
+                        finally:
+                            self.gemini_running = False
+                    threading.Thread(target=_gemini_worker, args=(gemini_images, task_prompt), daemon=True).start()
+
+                elif self.control_mode == "gemini_auto":
+                    def _gemini_worker(img, current_prompt):
+                        self.gemini_running = True
+                        try:
+                            new_task, narration, objects = self.gemini_planner.plan_next_task(img, self.gemini_planner.allowed_prompts)
+                            if narration:
+                                logger.info(f"Gemini: {narration}")
+                            if new_task: # and new_task != current_prompt:
+                                self.gemini_next_prompt = new_task
+                            elif new_task is None:
+                                logger.info("All cubes done!")
+                                events["exit_early"] = True
+                            self.gemini_annotated_frame = self.gemini_planner.draw_annotations(img['cam_high'], objects)
+                        except Exception as e:
+                            logger.warning(f"Gemini query failed: {e}")
+                        finally:
+                            self.gemini_running = False
+                    #threading.Thread(target=_gemini_worker, args=(img_rgb, task_prompt), daemon=True).start()
+                    threading.Thread(target=_gemini_worker, args=(gemini_images, task_prompt), daemon=True).start()
+
+            if self.gemini_annotated_frame is not None:
+                cv2.imshow("gemini_view", self.gemini_annotated_frame)
+                cv2.waitKey(1)
+
+            if self.gemini_next_prompt:
+                if self.gemini_next_prompt != task_prompt:
+                    say_gtts(self.gemini_next_prompt)
+                task_prompt = self.gemini_next_prompt
+                logger.info(f"'{task_prompt}'")
+                print()
+                self.gemini_next_prompt = None
 
             if self.display:
                 display_224=False
@@ -228,8 +462,9 @@ class TrossenOpenPIBridge:
                     "images": {cam.replace('observation.images.', ''): observation_dict[cam] for cam in camera_features},
                     "prompt": task_prompt,
                 }
+                #logger.info(f"Actual: '{task_prompt}'")
 
-                logger.info(f"Step {self.episode_step}: Requesting new action chunk")
+                #logger.info(f"Step {self.episode_step}: Requesting new action chunk")
                 response = self.policy_client.infer(observation)
                 self.current_action_chunk = response["actions"]
 
@@ -239,7 +474,7 @@ class TrossenOpenPIBridge:
                         self.action_buffer[future_t].append(self.current_action_chunk[k])
 
                 self.action_chunk_idx = 0
-                logger.info(f"Received action chunk: {self.current_action_chunk.shape}")
+                #logger.info(f"Received action chunk: {self.current_action_chunk.shape}")
 
             # Select action using temporal ensembling if enabled
             if self.temporal_ensemble_coefficient is not None:
@@ -274,7 +509,7 @@ class TrossenOpenPIBridge:
             if busy_wait_time > 0:
                 time.sleep(busy_wait_time)
             loop_s = time.perf_counter() - start_loop_time
-            logger.info(f"time: {loop_s * 1e3:.2f}ms ({1 / loop_s:.0f} Hz)")
+            #logger.info(f"time: {loop_s * 1e3:.2f}ms ({1 / loop_s:.0f} Hz)")
 
             if events["exit_early"]:
                 events["exit_early"] = False
@@ -297,7 +532,8 @@ class TrossenOpenPIBridge:
         """Clean up resources."""
         logger.info("Cleaning up...")
         self.robot.disconnect()
-
+        if self.speech_listener:
+            self.speech_listener.stop()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Trossen AI Stationary Kit <-> OpenPI Policy Server Bridge")
@@ -315,6 +551,12 @@ if __name__ == "__main__":
     parser.add_argument("--action_chunk_size", type=int, default=50, help="Action chunk size to call and use")
     parser.add_argument("--max_relative_target", type=float, default=0.05, help="Max delta action for robot safety and stability")
     parser.add_argument("--adjust_for_sim_to_real", type=bool, default=False, help="True for sim to real")
+    #GEMINI_API_KEY = "AIzaSyDjqe4ukf_TKhOYyvlYpg-rQx4WJDnZdAU"  # Your Google AI Studio API key
+    GEMINI_API_KEY = "AIzaSyC2idbTqgDeiUYuzATNZO5KIzfHQi-an9Y"  # Your Google AI Studio API key
+    parser.add_argument("--gemini_api_key", default=GEMINI_API_KEY, help="Google API key for Gemini Robotics-ER")
+    parser.add_argument("--high_level_task", default=None, help="High-level task for Gemini planner")
+    parser.add_argument("--control_mode", default="speech", choices=["speech", "speech_narrate", "speech_objects", "gemini_auto"],
+                        help="Mode 1: speech only, Mode 2: speech + gemini narration, Mode 3: gemini autonomous")    
     args = parser.parse_args()
 
     bridge = TrossenOpenPIBridge(
@@ -327,6 +569,36 @@ if __name__ == "__main__":
         max_relative_target=args.max_relative_target,
         adjust_for_sim_to_real=args.adjust_for_sim_to_real,
     )
+
+    bridge.control_mode = args.control_mode
+
+    if args.gemini_api_key and args.high_level_task and not bridge.control_mode=='speech':
+        from gemini_planner import GeminiPlanner
+        bridge.gemini_planner = GeminiPlanner(
+            api_key=args.gemini_api_key,
+            high_level_task=args.high_level_task,
+            allowed_prompts=[
+                "pick up red cube and place in green bucket",
+                "pick up blue cube and place in green bucket",
+                "pick up pink cube and place in green bucket",
+                "pick up yellow cube and place in green bucket",
+                "pick up brown cube and place in green bucket",
+            ]
+        )
+        # Warmup call to avoid cold start latency
+        logger.info("Warming up Gemini API...")
+        try:
+            obs = bridge.robot.capture_observation()
+            # cam = [c for c in bridge.robot.camera_features.keys() if 'high' in c][0]
+            # img = obs[cam].numpy()
+            # bridge.gemini_planner.narrate_and_annotate(img, "warming up")
+            cam_high = [c for c in bridge.robot.camera_features.keys() if 'high' in c][0]
+            cam_low = [c for c in bridge.robot.camera_features.keys() if 'low' in c][0]
+            gemini_images = {'cam_high': obs[cam_high].numpy(), 'cam_low': obs[cam_low].numpy()}
+            bridge.gemini_planner.narrate_and_annotate(gemini_images, "warming up")            
+            logger.info("Gemini warmup complete")
+        except Exception as e:
+            logger.warning(f"Gemini warmup failed: {e}")
 
     bridge.autonomous_mode(task_prompt=args.task_prompt)
 
