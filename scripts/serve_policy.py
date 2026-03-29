@@ -100,13 +100,20 @@ DEFAULT_CHECKPOINT: dict[EnvMode, Checkpoint] = {
     EnvMode.ALOHA_SIM_TROSSEN_AI_FULL_FINETUNE: Checkpoint(
         #config="pi0_aloha_sim_trossen_ai_full_finetune_v0", #for 'place lid on pot'
         #config="pi0_aloha_sim_trossen_ai_mem_finetune_v3", #actually full fine tune for 'pick up yellow cube and place in silver pan' etc
-        config="pi0_aloha_sim_trossen_ai_full_finetune_v4", #for 'pick up yellow cube and place in silver pan' etc
+        #config="pi0_aloha_sim_trossen_ai_full_finetune_v4", #for 'pick up yellow cube and place in silver pan' etc
+        config="pi05_aloha_sim_trossen_ai_full_finetune_v5", #pi05 for 'pick up yellow cube and place in silver pan' etc
+        #config="pi05_aloha_sim_trossen_ai_full_finetune_v6", #pi05 with image cropping and crop metadata
         #dir="./checkpoints/pi0_aloha_sim_trossen_ai_full_finetune_v0/trossen_ai_stationary_x5/19999" #trossen_ai_stationary_place_lids_04
         #dir="./checkpoints/pi0_aloha_sim_trossen_ai_mem_finetune_v3/trossen_ai_stationary_x6/19999" #trossen_ai_stationary_pick_and_place_07
         #dir="./checkpoints/pi0_aloha_sim_trossen_ai_mem_finetune_v3/trossen_ai_stationary_x6/39999" #trossen_ai_stationary_pick_and_place_07
         #dir="./checkpoints/pi0_aloha_sim_trossen_ai_full_finetune_v4/trossen_ai_stationary_x7/19999" #trossen_ai_stationary_pick_and_place_07
-        dir="./checkpoints/pi0_aloha_sim_trossen_ai_full_finetune_v4/trossen_ai_stationary_x8/19999" #trossen_ai_stationary_pick_and_place_08
-    ),
+        #dir="./checkpoints/pi0_aloha_sim_trossen_ai_full_finetune_v4/trossen_ai_stationary_x8/19999" #trossen_ai_stationary_pick_and_place_08
+        #dir="./checkpoints/pi0_aloha_sim_trossen_ai_full_finetune_v4/trossen_ai_stationary_x9/39999" #trossen_ai_stationary_pick_and_place_09
+        #dir="./checkpoints/pi05_aloha_sim_trossen_ai_full_finetune_v5/trossen_ai_stationary_x10/39999" #pi05 trossen_ai_stationary_pick_and_place_09
+        #dir="./checkpoints/pi05_aloha_sim_trossen_ai_full_finetune_v5/trossen_ai_stationary_x11/39999" #pi05 trossen_ai_stationary_pick_and_place_09
+        dir="./checkpoints/pi05_aloha_sim_trossen_ai_full_finetune_v5/trossen_ai_stationary_x12/39999" #pi05 trossen_ai_stationary_place_bead_on_string_10
+        #dir="./checkpoints/pi05_aloha_sim_trossen_ai_full_finetune_v6/trossen_ai_stationary_x13/39999" #pi05 with cropped images, trossen_ai_stationary_place_bead_on_string_10
+     ),
     EnvMode.ALOHA_SIM_TROSSEN_AI_PI05: Checkpoint(
         config="pi05_aloha_sim_trossen_ai",
         #dir="gs://openpi-assets/checkpoints/pi0_aloha_sim",

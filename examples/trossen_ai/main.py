@@ -35,6 +35,7 @@ from utils import init_keyboard_listener
 import openpi_client.image_tools as image_tools
 #from voice_command import VoiceCommandListener
 from utils import say_gtts
+import os
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -69,6 +70,10 @@ class TrossenOpenPIBridge:
         self.policy_client = websocket_client_policy.WebsocketClientPolicy(
             host=policy_server_host, port=policy_server_port
         )
+        #Get metadata from server:
+        metadata = self.policy_client.get_server_metadata()
+        self.crop_cameras = metadata.get("crop_cameras", {}) if metadata else {}
+        logger.info(f"Crop config from server: {self.crop_cameras}")
 
         # robot_config = BiWidowXAIFollowerRobotConfig(
         #     id="bimanual_follower",
@@ -211,6 +216,8 @@ class TrossenOpenPIBridge:
                     if narration:
                         logger.info(f"Gemini: {narration}")
                     if new_task:
+                        say_gtts('starting episode')
+                        time.sleep(2)
                         task_prompt = new_task
                         logger.info(f"'{task_prompt}'")
                         say_gtts(task_prompt)
@@ -232,7 +239,7 @@ class TrossenOpenPIBridge:
         #         command = self.speech_listener.get_command_blocking(timeout=1.0)
         #         if command:
         #             print(f"\n  >> COMMAND READY: \"{command}\"\n")
-        #             color = next((c for c in colors if c in command), None)
+        #             color = next((c for c in say_gtts(task_prompt)colors if c in command), None)
         #             if color:
         #                 task_prompt=template.format(color)
         #                 logger.info(f"'{task_prompt}'")
@@ -443,6 +450,15 @@ class TrossenOpenPIBridge:
                 #display_224=False
                 for cam in camera_features:
                     image_hwc = observation_dict[cam].numpy()
+                    # Apply crop if configured by training, this crop only executes if crop_size is in the server metadata
+                    cam_short = cam.replace('observation.images.', '')
+                    for pattern, crop_size in self.crop_cameras.items():
+                        if pattern in cam_short:
+                            h, w = image_hwc.shape[:2]
+                            y_start = (h - crop_size) // 2
+                            x_start = (w - crop_size) // 2
+                            image_hwc = image_hwc[y_start:y_start + crop_size, x_start:x_start + crop_size]
+                            break
                     if 0: #not display_224:
                         cv2.imshow(cam, cv2.cvtColor(image_hwc, cv2.COLOR_RGB2BGR))
                         cv2.waitKey(1)
@@ -551,11 +567,11 @@ if __name__ == "__main__":
     parser.add_argument("--action_chunk_size", type=int, default=50, help="Action chunk size to call and use")
     parser.add_argument("--max_relative_target", type=float, default=0.05, help="Max delta action for robot safety and stability")
     parser.add_argument("--adjust_for_sim_to_real", type=bool, default=False, help="True for sim to real")
-    #GEMINI_API_KEY = "AIzaSyDjqe4ukf_TKhOYyvlYpg-rQx4WJDnZdAU"  # Your Google AI Studio API key
-    GEMINI_API_KEY = "AIzaSyC2idbTqgDeiUYuzATNZO5KIzfHQi-an9Y"  # Your Google AI Studio API key
+    #GEMINI_API_KEY = "key"  # Your Google AI Studio API key
+    GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
     parser.add_argument("--gemini_api_key", default=GEMINI_API_KEY, help="Google API key for Gemini Robotics-ER")
     parser.add_argument("--high_level_task", default=None, help="High-level task for Gemini planner")
-    parser.add_argument("--control_mode", default="speech", choices=["speech", "speech_narrate", "speech_objects", "gemini_auto"],
+    parser.add_argument("--control_mode", default="none", choices=["none", "speech", "speech_narrate", "speech_objects", "gemini_auto"],
                         help="Mode 1: speech only, Mode 2: speech + gemini narration, Mode 3: gemini autonomous")    
     args = parser.parse_args()
 
@@ -572,7 +588,7 @@ if __name__ == "__main__":
 
     bridge.control_mode = args.control_mode
 
-    if args.gemini_api_key and args.high_level_task and not bridge.control_mode=='speech':
+    if args.gemini_api_key and args.high_level_task and not bridge.control_mode=='speech' and not bridge.control_mode=='none':
         from gemini_planner import GeminiPlanner
         bridge.gemini_planner = GeminiPlanner(
             api_key=args.gemini_api_key,

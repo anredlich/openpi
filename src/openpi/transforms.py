@@ -190,6 +190,57 @@ class ResizeImages(DataTransformFn):
         data["image"] = {k: image_tools.resize_with_pad(v, self.height, self.width) for k, v in data["image"].items()}
         return data
 
+@dataclasses.dataclass(frozen=True)
+class CenterCropImages(DataTransformFn):
+    """Center-crops selected camera images to a square region.
+    
+    This effectively acts as a "fovea" zoom — by cropping the center
+    of the image before the resize to 224×224, each SigLIP token
+    covers a smaller physical area, giving finer spatial resolution
+    where it matters (e.g., wrist cameras for fine manipulation).
+    
+    Images that don't match any pattern in `camera_name_patterns`
+    are passed through unchanged.
+    """
+    # Substring patterns to match camera names that should be cropped.
+    # e.g., ["wrist"] will match "cam_left_wrist" and "cam_right_wrist"
+    camera_name_patterns: Sequence[str] = ()
+    
+    # If None, crops to the largest centered square (min(H,W) × min(H,W)).
+    # If set, crops to this exact size (must be <= min(H,W) of the image).
+    crop_size: int | None = None
+
+    def _should_crop(self, camera_name: str) -> bool:
+        return any(pattern in camera_name for pattern in self.camera_name_patterns)
+
+    def _crop(self, img: np.ndarray) -> np.ndarray:
+        if img.ndim == 3 and img.shape[0] in (1, 3, 4):
+            # Channels-first: (C, H, W)
+            h, w = img.shape[1], img.shape[2]
+            size = self.crop_size if self.crop_size is not None else min(h, w)
+            y_start = (h - size) // 2
+            x_start = (w - size) // 2
+            return img[:, y_start:y_start + size, x_start:x_start + size]
+        else:
+            # Channels-last: (H, W, C)
+            h, w = img.shape[:2]
+            size = self.crop_size if self.crop_size is not None else min(h, w)
+            y_start = (h - size) // 2
+            x_start = (w - size) // 2
+            return img[y_start:y_start + size, x_start:x_start + size]
+    
+    def __call__(self, data: DataDict) -> DataDict:
+        # Handle both "images" (pre-AlohaInputs) and "image" (post-AlohaInputs) keys
+        for key in ("images", "image"):
+            if key in data and isinstance(data[key], dict):
+                #for k, v in data[key].items():
+                #    should_crop = self._should_crop(k)
+                #    print(f"CenterCropImages: key='{k}', shape={v.shape}, should_crop={should_crop}")
+                data[key] = {
+                    k: self._crop(v) if self._should_crop(k) else v
+                    for k, v in data[key].items()
+                }
+        return data
 
 @dataclasses.dataclass(frozen=True)
 class SubsampleActions(DataTransformFn):

@@ -1201,7 +1201,9 @@ _CONFIGS = [
         model=pi0_config.Pi0Config(),
         data=LeRobotAlohaDataConfig(
             #repo_id="ANRedlich/trossen_ai_stationary_pick_and_place_07",
-            repo_id="ANRedlich/trossen_ai_stationary_pick_and_place_08",
+            #repo_id="ANRedlich/trossen_ai_stationary_pick_and_place_08",
+            repo_id="ANRedlich/trossen_ai_stationary_pick_and_place_09",
+            #repo_id="ANRedlich/real_data_08_09_merged", #this is the local version of trossen_ai_stationary_pick_and_place_09
             base_config=DataConfig(prompt_from_task=True), #add for individual task prompts
             default_prompt="pick and place",
             use_delta_joint_actions=False,
@@ -1226,8 +1228,104 @@ _CONFIGS = [
             ),
         ),       
         weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
-        num_train_steps=20_000, #40_000,#20_000,
+        num_train_steps=40_000, #40_000,#20_000,
         save_interval=5000,
+    ),
+    #
+    # ALOHA Sim Trossen configs. This config is used to demonstrate how to train on the trossen ai simulated environment.
+    # This version v5 is designed to do full fine tuning for pi05 with multiple task prompts, and initially to create norm stats for the newer trossen ai stationary robot.
+    #
+    TrainConfig(
+        name="pi05_aloha_sim_trossen_ai_full_finetune_v5",  # renamed to avoid collision
+        model=pi0_config.Pi0Config(pi05=True),
+        data=LeRobotAlohaDataConfig(
+            #repo_id="ANRedlich/trossen_ai_stationary_pick_and_place_09",
+            #repo_id="ANRedlich/trossen_ai_stationary_place_lids_04",
+            repo_id="ANRedlich/trossen_ai_stationary_place_bead_on_string_10",
+            base_config=DataConfig(prompt_from_task=True),
+            #default_prompt="pick and place",
+            #default_prompt="Transfer place lids using Trossen AI Stationary.",
+            default_prompt="pick up bead and place on string",
+            use_delta_joint_actions=False,
+            adapt_to_pi=False,
+            adapt_trossen_to_pi=True,
+            repack_transforms=_transforms.Group(
+                inputs=[
+                    _transforms.RepackTransform(
+                        {
+                            "images": {
+                                "cam_high": "observation.images.cam_high",
+                                "cam_low": "observation.images.cam_low",
+                                "cam_left_wrist": "observation.images.cam_left_wrist",
+                                "cam_right_wrist": "observation.images.cam_right_wrist",
+                            },
+                            "state": "observation.state",
+                            "actions": "action",
+                            "prompt": "prompt",
+                        }
+                    )
+                ]
+            ),
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
+        num_train_steps=40_000,
+        save_interval=5000,
+    ),
+    #
+    # ALOHA Sim Trossen configs. This config is used to demonstrate how to train on the trossen ai simulated environment.
+    # This version v6 the same as v5, but adds center crop for wrist images. Does full fine tuning for pi05 with multiple task prompts, and initially to create norm stats for the newer trossen ai stationary robot.
+    #
+    TrainConfig(
+        name="pi05_aloha_sim_trossen_ai_full_finetune_v6",  # renamed to avoid collision
+        model=pi0_config.Pi0Config(pi05=True),
+        data=LeRobotAlohaDataConfig(
+            #repo_id="ANRedlich/trossen_ai_stationary_pick_and_place_09",
+            #repo_id="ANRedlich/trossen_ai_stationary_place_lids_04",
+            repo_id="ANRedlich/trossen_ai_stationary_place_bead_on_string_10",
+            base_config=DataConfig(prompt_from_task=True),
+            #default_prompt="pick and place",
+            #default_prompt="Transfer place lids using Trossen AI Stationary.",
+            default_prompt="pick up bead and place on string",
+            use_delta_joint_actions=False,
+            adapt_to_pi=False,
+            adapt_trossen_to_pi=True,
+            repack_transforms=_transforms.Group(
+                inputs=[
+                    _transforms.RepackTransform(
+                        {
+                            "images": {
+                                "cam_high": "observation.images.cam_high",
+                                "cam_low": "observation.images.cam_low",
+                                "cam_left_wrist": "observation.images.cam_left_wrist",
+                                "cam_right_wrist": "observation.images.cam_right_wrist",
+                            },
+                            "state": "observation.state",
+                            "actions": "action",
+                            "prompt": "prompt",
+                        }
+                    ),
+                    # Crop base camera to square (eliminates black bars, no zoom since 480 = min dim)
+                    _transforms.CenterCropImages(
+                        camera_name_patterns=["cam_high"],
+                        crop_size=480,
+                    ),
+                    # Crop wrist cameras for ~1.8× zoom
+                    _transforms.CenterCropImages(
+                        camera_name_patterns=["wrist"],
+                        crop_size=360,
+                    ),
+                ]
+            ),
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
+        num_train_steps=40_000,
+        save_interval=5000,
+        policy_metadata={
+            "crop_cameras": {
+                "cam_high": 480,
+                "wrist": 360,
+            }
+        },
     ),
     #
     # ALOHA Sim Trossen configs. This config is used to demonstrate how to train on the trossen ai simulated environment.

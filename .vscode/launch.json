@@ -36,13 +36,15 @@
                     //"--task_prompt='Transfer cube'",
                     //"--task_prompt='pick up yellow cube and place in silver pan'",
                     //"--task_prompt='pick up white cube and place in silver pan'",
-                    "--task_prompt='pick up red cube and place in green bucket'",
+                    //"--task_prompt='pick up red cube and place in green bucket'", //for pick and place 09
+                    //"--task_prompt='Transfer place lids using Trossen AI Stationary.'", //for place lids 04
+                    "--task_prompt='pick up bead and place on string'", //for trossen_ai_stationary_place_bead_on_string_10
                     "--max_steps=5000", //default=1000
                     "--action_chunk_size=50", //default=50
                     "--max_relative_target=1.0", //0.25", //0.1", //default=0.05
                     //"--adjust_for_sim_to_real=True", //default=False
-                    "--high_level_task=Pick up all the cubes on the table and place them in the green bucket",
-                    "--control_mode=gemini_auto", //speech speech_narrate speech_objects gemini_auto   
+                    //"--high_level_task=Pick up all the cubes on the table and place them in the green bucket",
+                    //"--control_mode=none", //speech speech_narrate speech_objects gemini_auto   
                 ]
         },
         {
@@ -215,9 +217,13 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": false,
+            //"env": {
+            //        "HF_HUB_OFFLINE": "1"
+            //    },            
             "args": [
                     //"--config-name=pi0_aloha_sim_trossen_ai_full_finetune_v0",
-                    "--config-name=pi0_aloha_sim_trossen_ai_full_finetune_v4",
+                    //"--config-name=pi0_aloha_sim_trossen_ai_full_finetune_v4",
+                    "--config-name=pi05_aloha_sim_trossen_ai_full_finetune_v5",
                     //"--max-frames=1000",
                    ]
         },
@@ -312,8 +318,10 @@
             },
             "args": [
                 //"pi0_aloha_sim_trossen_ai_mem_finetune_v2",
-                "pi0_aloha_sim_trossen_ai_mem_finetune_v3",
-                "--exp-name=trossen_ai_stationary_x6",
+                //"pi0_aloha_sim_trossen_ai_mem_finetune_v3",
+                "pi05_aloha_sim_trossen_ai_full_finetune_v6",
+                //"--exp-name=trossen_ai_stationary_x6",
+                "--exp-name=trossen_ai_stationary_x13",
                 //"--num_train_steps=300", //30_000
                 //"--batch_size=8", //256
                 //"--overwrite"

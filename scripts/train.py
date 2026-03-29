@@ -244,6 +244,30 @@ def main(config: _config.TrainConfig):
     batch = next(data_iter)
     logging.info(f"Initialized data loader:\n{training_utils.array_tree_to_info(batch)}")
 
+    # === DEBUG: Save transformed images and exit before model init ===
+    import cv2
+    import os
+    debug_dir = "./debug_images"
+    os.makedirs(debug_dir, exist_ok=True)
+    for cam_name, img_batch in batch[0].images.items():
+        for i in range(min(3, len(img_batch))):
+            img = np.array(img_batch[i])
+            # Images are likely float32 in [-1,1] or [0,1] after transforms.
+            # Rescale to uint8 for saving.
+            if img.max() <= 1.0:
+                img = ((img + 1.0) / 2.0 * 255).clip(0, 255).astype(np.uint8)
+            elif img.min() < 0:
+                img = ((img + 1.0) / 2.0 * 255).clip(0, 255).astype(np.uint8)
+            else:
+                img = img.clip(0, 255).astype(np.uint8)
+            # Convert RGB to BGR for cv2
+            cv2.imwrite(f"{debug_dir}/{cam_name}_sample{i}.png", cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+            logging.info(f"Saved {cam_name}_sample{i}.png  shape={img.shape}")
+    logging.info(f"Debug images saved to {debug_dir}/ — exiting before model init.")
+    import sys
+    sys.exit(0)
+    # === END DEBUG ===
+
     # Log images from first batch to sanity check.
     images_to_log = [
         wandb.Image(np.concatenate([np.array(img[i]) for img in batch[0].images.values()], axis=1))
