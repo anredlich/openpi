@@ -23,6 +23,8 @@ import time
 import torch
 
 import cv2
+cv2.namedWindow('_init', cv2.WINDOW_NORMAL)
+cv2.destroyAllWindows()
 # from lerobot.cameras.realsense.configuration_realsense import RealSenseCameraConfig
 # from lerobot.robots import make_robot_from_config
 # from lerobot_robot_trossen.config_bi_widowxai_follower import BiWidowXAIFollowerRobotConfig
@@ -34,8 +36,13 @@ from scipy.interpolate import PchipInterpolator
 from utils import init_keyboard_listener
 import openpi_client.image_tools as image_tools
 #from voice_command import VoiceCommandListener
-from utils import say_gtts
+from utils import say_gtts, say_tts
 import os
+os.environ["SVT_LOG"] = "0"
+
+import trossen_arm as trossen
+
+from lerobot.common.datasets.lerobot_dataset import LeRobotDataset
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -57,6 +64,7 @@ class TrossenOpenPIBridge:
         action_chunk_size: int = 50,
         max_relative_target: float = 0.05,
         adjust_for_sim_to_real: bool = False,
+        record_mode: str = "rollout",
     ):
         self.control_frequency = control_frequency
         self.max_steps = max_steps
@@ -74,36 +82,23 @@ class TrossenOpenPIBridge:
         metadata = self.policy_client.get_server_metadata()
         self.crop_cameras = metadata.get("crop_cameras", {}) if metadata else {}
         logger.info(f"Crop config from server: {self.crop_cameras}")
-
-        # robot_config = BiWidowXAIFollowerRobotConfig(
-        #     id="bimanual_follower",
-        #     left_arm_ip_address="192.168.1.5",
-        #     right_arm_ip_address="192.168.1.4",
-        #     min_time_to_move_multiplier=4.0,
-        #     loop_rate=30,
-        #     cameras={
-        #         "cam_high": RealSenseCameraConfig(
-        #             serial_number_or_name="218622270304", width=640, height=480, fps=30, use_depth=False
-        #         ),
-        #         "cam_low": RealSenseCameraConfig(
-        #             serial_number_or_name="130322272628", width=640, height=480, fps=30, use_depth=False
-        #         ),
-        #         "cam_right_wrist": RealSenseCameraConfig(
-        #             serial_number_or_name="128422271347", width=640, height=480, fps=30, use_depth=False
-        #         ),
-        #         "cam_left_wrist": RealSenseCameraConfig(
-        #             serial_number_or_name="218622274938", width=640, height=480, fps=30, use_depth=False
-        #         ),
-        #     },
-        # )
-                    #         "--robot.max_relative_target=0.05", //0.025", //0.1", //0.025", //0.05", //0.1",
-                    # //"--robot.home_pose=[0, 0, 0, 0, 0, 0, 0.05]", //BIG dataset3 and policy=act_trossen_ai_stationary_real_01
-                    # "--robot.home_pose=[0, 0.261799, 0.261799, 0, 0, 0, 0.044]", //all sim policies: START_ARM_POSE_TROSSEN_AI_STATIONARY
  
         robot_config=TrossenAIStationaryRobotConfig(max_relative_target,home_pose=[0, 0.261799, 0.261799, 0, 0, 0, 0.044]) #max_relative_target=0.05
         self.robot = make_robot_from_config(robot_config)
-        self.robot.leader_arms = {} #[]
+        self.dataset_features = self.robot.features.copy()  # Save before clearing leader_arms
+        # Add dtype for image features
+        for key, ft in self.dataset_features.items():
+            if 'images' in key:
+                self.dataset_features[key] = {
+                    'dtype': 'video',
+                    **ft,
+                }
+        #logger.info(f"Saved dataset_features: {self.dataset_features}")
+        self.record_mode=record_mode
+        if record_mode == 'rollout':
+            self.robot.leader_arms = {} #[]
         self.robot.connect()
+        self.hold_leaders()
 
         self.current_action_chunk = None
         self.action_chunk_idx = 0
@@ -133,22 +128,33 @@ class TrossenOpenPIBridge:
         self.gemini_next_prompt = None
         self.control_mode = "speech"  # default, overridden from __main__
 
+    # def execute_action(self, action: np.ndarray):
+    #     """Execute action on the arm."""
+    #     full_action = action.copy()
+    #     full_action = torch.from_numpy(full_action).float()
+
+    #     if self.test_mode == "test":
+    #         logger.info(f"TEST MODE: Would execute action: {full_action}")
+    #         return
+    #     if self.test_mode == "autonomous":
+    #         #joint_features = list(self.robot._joint_ft.keys())
+    #         #action_dict = {k: full_action[i] for i, k in enumerate(joint_features)}
+    #         #self.robot.send_action(action_dict)
+    #         self.robot.send_action(full_action)
+    #     else:
+    #         logger.error(f"Unknown mode: {self.test_mode}. No action executed.")
     def execute_action(self, action: np.ndarray):
-        """Execute action on the arm."""
         full_action = action.copy()
         full_action = torch.from_numpy(full_action).float()
-
         if self.test_mode == "test":
             logger.info(f"TEST MODE: Would execute action: {full_action}")
-            return
+            return full_action
         if self.test_mode == "autonomous":
-            #joint_features = list(self.robot._joint_ft.keys())
-            #action_dict = {k: full_action[i] for i, k in enumerate(joint_features)}
-            #self.robot.send_action(action_dict)
-            self.robot.send_action(full_action)
+            return self.robot.send_action(full_action)
         else:
             logger.error(f"Unknown mode: {self.test_mode}. No action executed.")
-
+            return full_action
+    
     def move_to_start_position(self, goal_position: np.ndarray, duration: float = 5.0):
         """The first position queried from the policy depends on the training data.
         Assuming the first position is a "stage" position will result in a large jump if the arm is not already there.
@@ -177,7 +183,7 @@ class TrossenOpenPIBridge:
             positions = interpolator_position(current_time)
             self.execute_action(positions)
 
-    def run_episode(self, task_prompt: str = "look down"):
+    def run_episode(self, task_prompt: str = "look down", dataset=None, events=None):
         """Run a single episode of policy execution."""
         #logger.info(f"Starting episode with prompt: '{task_prompt}'")
         self.episode_step = 0
@@ -186,7 +192,10 @@ class TrossenOpenPIBridge:
         self.is_running = True
         is_first_step = True
 
-        listener, events = init_keyboard_listener()
+        #listener, events = init_keyboard_listener()
+        if events is None:
+            events = {"exit_early": False, "rerecord_episode": False, "stop_recording": False,
+                    "switch_to_teleop": False, "switch_to_rollout": False}
 
         camera_features = list(self.robot.camera_features.keys())
         for cam in camera_features:
@@ -216,34 +225,17 @@ class TrossenOpenPIBridge:
                     if narration:
                         logger.info(f"Gemini: {narration}")
                     if new_task:
-                        say_gtts('starting episode')
+                        say_tts('starting episode')
                         time.sleep(2)
                         task_prompt = new_task
                         logger.info(f"'{task_prompt}'")
-                        say_gtts(task_prompt)
+                        say_tts(task_prompt)
                         print()
                     #self.gemini_annotated_frame = self.gemini_planner.draw_annotations(img_rgb, objects)
                     self.gemini_annotated_frame = self.gemini_planner.draw_annotations(gemini_images['cam_high'], objects)
                 except Exception as e:
                     logger.warning(f"Gemini initial query failed: {e}")
 
-        #speech to text
-        # if not self.speech_listener: # and not self.gemini_planner:
-        #     from voice_command import VoiceCommandListener
-        #     self.speech_listener = VoiceCommandListener()
-        # if self.speech_listener:
-        #     colors = ['red','blue','pink','yellow','brown']
-        #     template = "pick up {} cube and place in green bucket"
-        #     self.speech_listener.start()
-        #     while True:
-        #         command = self.speech_listener.get_command_blocking(timeout=1.0)
-        #         if command:
-        #             print(f"\n  >> COMMAND READY: \"{command}\"\n")
-        #             color = next((c for c in say_gtts(task_prompt)colors if c in command), None)
-        #             if color:
-        #                 task_prompt=template.format(color)
-        #                 logger.info(f"'{task_prompt}'")
-        #             break
         #speech to text
         colors = ['red','blue','pink','yellow','brown']
         template = "pick up {} cube and place in green bucket"
@@ -265,16 +257,6 @@ class TrossenOpenPIBridge:
         while self.is_running and self.episode_step < self.max_steps:
             start_loop_time = time.perf_counter()
 
-            # if self.speech_listener:
-            #     command = self.speech_listener.get_command() #_blocking(timeout=1.0)
-            #     if command:
-            #         print(f"\n  >> COMMAND READY: \"{command}\"\n")
-            #         color = next((c for c in colors if c in command), None)
-            #         if color:
-            #             task_prompt=template.format(color)
-            #             logger.info(f"'{task_prompt}'")
-            #         elif 'exit' in command.lower() or 'stop' in command.lower():
-            #             break
             if self.speech_listener:
                 command = self.speech_listener.get_command()
                 if command:
@@ -286,52 +268,6 @@ class TrossenOpenPIBridge:
                     elif 'exit' in command.lower() or 'stop' in command.lower():
                         break
 
-            # if self.gemini_planner and self.gemini_planner.should_query(): #self.episode_step
-            #     try:
-            #         obs = self.robot.capture_observation()
-            #         images = self.gemini_planner.get_images_from_observation(obs, camera_features)
-            #         new_prompt = self.gemini_planner.query(images)
-            #         if new_prompt != task_prompt:
-            #             task_prompt = new_prompt
-            #             logger.info(f"Gemini new prompt: '{task_prompt}'")
-            #     except Exception as e:
-            #         logger.warning(f"Gemini query failed: {e}")task_prompt
-
-            # if self.gemini_planner and self.gemini_planner.should_query():
-            #     try:
-            #         obs = self.robot.capture_observation()
-            #         img_rgb = obs[gemini_high_cam].numpy()
-            #         narration, objects = self.gemini_planner.narrate_and_annotate(img_rgb, task_prompt)
-            #         if narration:
-            #             logger.info(f"Gemini: {narration}")
-            #         annotated = self.gemini_planner.draw_annotations(img_rgb, objects)
-            #         cv2.imshow("gemini_view", annotated)
-            #         cv2.waitKey(1)
-            #     except Exception as e:
-            #         logger.warning(f"Gemini query failed: {e}")
-
-            # if self.gemini_planner and self.gemini_planner.should_query() and not self.gemini_running:
-            #     import threading
-            #     obs = self.robot.capture_observation()
-            #     img_rgb = obs[gemini_high_cam].numpy()
-            #     def _gemini_worker(img, task):
-            #         self.gemini_running = True
-            #         try:
-            #             narration, objects = self.gemini_planner.narrate_and_annotate(img, task)
-            #             if narration:
-            #                 logger.info(f"Gemini: {narration}")
-            #             self.gemini_annotated_frame = self.gemini_planner.draw_annotations(img, objects)
-            #         except Exception as e:
-            #             logger.warning(f"Gemini query failed: {e}")
-            #         finally:
-            #             self.gemini_running = False
-            #     threading.Thread(target=_gemini_worker, args=(img_rgb, task_prompt), daemon=True).start()
-
-            # if self.gemini_annotated_frame is not None:
-            #     cv2.imshow("gemini_view", self.gemini_annotated_frame)
-            #     cv2.waitKey(1)
-
-            #if self.gemini_planner and self.gemini_planner.should_query() and not self.gemini_running:
             if self.gemini_planner and self.gemini_planner.should_query() and not self.gemini_running:                
                 import threading
                 obs = self.robot.capture_observation()
@@ -341,24 +277,6 @@ class TrossenOpenPIBridge:
                     'cam_low': obs[gemini_low_cam].numpy(),
                 }
 
-                # if self.control_mode == "speech_narrate":
-                #     def _gemini_worker(img, task):
-                #         self.gemini_running = True
-                #         try:
-                #             #narration, objects = self.gemini_planner.narrate_and_annotate(img, task)
-                #             narration, objects, success = self.gemini_planner.narrate_and_annotate(img, task)
-                #             if success:
-                #                 logger.info(f"Gemini: Task succeeded! '{task}'")
-                #             if narration:
-                #                 logger.info(f"Gemini: {narration}")
-                #             #self.gemini_annotated_frame = self.gemini_planner.draw_annotations(img, objects)
-                #             self.gemini_annotated_frame = self.gemini_planner.draw_annotations(img['cam_high'], objects)
-                #         except Exception as e:
-                #             logger.warning(f"Gemini query failed: {e}")
-                #         finally:
-                #             self.gemini_running = False
-                #     #threading.Thread(target=_gemini_worker, args=(img_rgb, task_prompt), daemon=True).start()
-                #     threading.Thread(target=_gemini_worker, args=(gemini_images, task_prompt), daemon=True).start()
                 if self.control_mode == "speech_narrate":
                     def _gemini_worker(img, task):
                         self.gemini_running = True
@@ -415,7 +333,7 @@ class TrossenOpenPIBridge:
 
             if self.gemini_next_prompt:
                 if self.gemini_next_prompt != task_prompt:
-                    say_gtts(self.gemini_next_prompt)
+                    say_tts(self.gemini_next_prompt)
                 task_prompt = self.gemini_next_prompt
                 logger.info(f"'{task_prompt}'")
                 print()
@@ -515,7 +433,16 @@ class TrossenOpenPIBridge:
                 a_t[7]=1.05*(a_t[7]+0.01)
                 a_t[8]=a_t[8]-0.025
                 a_t[9]=a_t[9]+0.025
-            self.execute_action(a_t)
+            actual_action = self.execute_action(a_t)
+
+            if dataset is not None:
+                obs = self.robot.capture_observation()
+                frame = {
+                    **obs,
+                    "action": actual_action,
+                    "task": task_prompt,
+                }
+                dataset.add_frame(frame)
 
             self.action_chunk_idx += 1
             self.episode_step += 1
@@ -537,14 +464,350 @@ class TrossenOpenPIBridge:
         self.is_running = False
         logger.info(f"Episode completed after {self.episode_step} steps")
 
+    def run_episode_teleoperate(self, task_prompt: str = "look down", dataset=None, events=None):
+        """Run a single episode of teleoperation."""
+        self.episode_step = 0
+        self.is_running = True
+        is_first_step = True
+
+        #listener, events = init_keyboard_listener()
+        if events is None:
+                events = {"exit_early": False, "rerecord_episode": False, "stop_recording": False}
+
+        camera_features = list(self.robot.camera_features.keys())
+        for cam in camera_features:
+            cv2.namedWindow(cam, cv2.WINDOW_NORMAL)
+            cv2.resizeWindow(cam, 640, 480)
+
+        while self.is_running and self.episode_step < self.max_steps:
+            start_loop_time = time.perf_counter()
+
+            if self.display:
+                display_224=False
+                observation_dict = self.robot.capture_observation()
+                for cam in camera_features:
+                    image_hwc = observation_dict[cam].numpy()
+                    if not display_224:
+                        cv2.imshow(cam, cv2.cvtColor(image_hwc, cv2.COLOR_RGB2BGR))
+                        cv2.waitKey(1)
+                    if display_224:
+                        image_resized = image_tools.convert_to_uint8(image_tools.resize_with_pad(image_hwc, 224, 224))
+                        cv2.imshow(cam, cv2.cvtColor(image_resized, cv2.COLOR_RGB2BGR))
+                        cv2.waitKey(1)
+
+            observation, action = self.robot.teleop_step(record_data=True)
+
+            if dataset is not None:
+                #obs = self.robot.capture_observation()
+                frame = {
+                    **observation,
+                    "action": action["action"],
+                    "task": task_prompt,
+                }
+                dataset.add_frame(frame)
+
+            self.episode_step += 1
+
+            dt_s = time.perf_counter() - start_loop_time
+            busy_wait_time = self.dt - dt_s
+
+            # Busy wait to maintain control frequency
+            if busy_wait_time > 0:
+                time.sleep(busy_wait_time)
+            loop_s = time.perf_counter() - start_loop_time
+ 
+            if events["exit_early"]:
+                events["exit_early"] = False
+                break
+
+        self.is_running = False
+        logger.info(f"Episode completed after {self.episode_step} steps")
+
+    def run_episode_intervention(self, task_prompt: str = "look down", dataset=None, events=None):
+        """Run a single episode of policy execution."""
+        self.episode_step = 0
+        self.action_chunk_idx = 0
+        self.current_action_chunk = None
+        self.is_running = True
+        is_first_step = True
+
+        #listener, events = init_keyboard_listener()
+        if events is None:
+            events = {"exit_early": False, "rerecord_episode": False, "stop_recording": False,
+                    "switch_to_teleop": False, "switch_to_rollout": False}
+
+        camera_features = list(self.robot.camera_features.keys())
+        for cam in camera_features:
+            cv2.namedWindow(cam, cv2.WINDOW_NORMAL)
+            cv2.resizeWindow(cam, 640, 480)
+
+        while self.is_running and self.episode_step < self.max_steps:
+            start_loop_time = time.perf_counter()
+
+            if self.display:
+                display_224=False
+                observation_dict = self.robot.capture_observation()
+                for cam in camera_features:
+                    image_hwc = observation_dict[cam].numpy()
+                    if not display_224:
+                        cv2.imshow(cam, cv2.cvtColor(image_hwc, cv2.COLOR_RGB2BGR))
+                        cv2.waitKey(1)
+                    if display_224:
+                        image_resized = image_tools.convert_to_uint8(image_tools.resize_with_pad(image_hwc, 224, 224))
+                        cv2.imshow(cam, cv2.cvtColor(image_resized, cv2.COLOR_RGB2BGR))
+                        cv2.waitKey(1)
+
+            # Request new action chunk after consuming the previous one
+            if self.current_action_chunk is None or self.action_chunk_idx >= self.rate_of_inference:
+                #observation_dict = self.robot.get_observation()
+                observation_dict = self.robot.capture_observation()
+
+                # Extract joint positions from observation
+                #joint_pos_keys = [k for k in observation_dict.keys() if k.endswith(".pos")]
+                #joint_positions = np.array([observation_dict[k] for k in joint_pos_keys])
+                joint_positions = observation_dict['observation.state'].numpy()
+
+                # Transform and resize images from all cameras
+                # cameras = list(self.robot._cameras_ft.keys())
+                #cameras = list(self.robot.cameras.keys())
+                #display_224=False
+                debug_dir = "./debug_images"
+                for cam in camera_features:
+                    image_hwc = observation_dict[cam].numpy()
+                    # Apply crop if configured by training, this crop only executes if crop_size is in the server metadata
+                    cam_short = cam.replace('observation.images.', '')
+                    for pattern, crop_size in self.crop_cameras.items():
+                        if pattern in cam_short:
+                            h, w = image_hwc.shape[:2]
+                            y_start = (h - crop_size) // 2
+                            x_start = (w - crop_size) // 2
+                            image_hwc = image_hwc[y_start:y_start + crop_size, x_start:x_start + crop_size]
+                            break
+                    if 0: #not display_224:
+                        cv2.imshow(cam, cv2.cvtColor(image_hwc, cv2.COLOR_RGB2BGR))
+                        cv2.waitKey(1)
+                    # convert BGR to RGB
+                    #image_resized = cv2.resize(image_hwc, (224, 224))
+                    image_resized = image_tools.convert_to_uint8(image_tools.resize_with_pad(image_hwc, 224, 224))
+                    ##image_rgb = cv2.cvtColor(image_resized, cv2.COLOR_BGR2RGB)
+                    if 1: #display_224:
+                        #cv2.imshow(cam, cv2.cvtColor(image_resized, cv2.COLOR_RGB2BGR))
+                        cv2.imwrite(f"{debug_dir}/{cam}_sample{self.episode_step}.png", cv2.cvtColor(image_resized, cv2.COLOR_RGB2BGR))
+                        #cv2.waitKey(1)
+                    image_chw = np.transpose(image_resized, (2, 0, 1))
+                    observation_dict[cam] = image_chw
+
+                # Create observation for policy to follow the ALOHA format
+                observation = {
+                    "state": joint_positions,
+                    "images": {cam.replace('observation.images.', ''): observation_dict[cam] for cam in camera_features},
+                    "prompt": task_prompt,
+                }
+                #logger.info(f"Actual: '{task_prompt}'")
+
+                #logger.info(f"Step {self.episode_step}: Requesting new action chunk")
+                response = self.policy_client.infer(observation)
+                self.current_action_chunk = response["actions"]
+
+                for k in range(self.action_chunk_size):
+                    future_t = self.episode_step + k
+                    if future_t < self.action_buffer_size:
+                        self.action_buffer[future_t].append(self.current_action_chunk[k])
+
+                self.action_chunk_idx = 0
+                #logger.info(f"Received action chunk: {self.current_action_chunk.shape}")
+
+            # Select action using temporal ensembling if enabled
+            if self.temporal_ensemble_coefficient is not None:
+                if len(self.action_buffer[self.episode_step]) == 0:
+                    a_t = np.zeros(self.action_dim)
+                else:
+                    candidates = np.array(self.action_buffer[self.episode_step])  # shape: (N, 14)
+                    weights = self._get_weights(len(candidates))  # shape: (N,)
+                    a_t = np.average(candidates, axis=0, weights=weights)  # shape: (14,)
+            else:
+                a_t = self.current_action_chunk[self.action_chunk_idx]
+            if self.adjust_for_sim_to_real:
+                a_t=a_t.copy()
+                a_t[7]=1.05*(a_t[7]+0.01)
+                a_t[8]=a_t[8]-0.025
+                a_t[9]=a_t[9]+0.025
+            actual_action = self.execute_action(a_t)
+
+            if dataset is not None:
+                obs = self.robot.capture_observation()
+                frame = {
+                    **obs,
+                    "action": actual_action,
+                    "task": task_prompt,
+                }
+                dataset.add_frame(frame)
+
+            self.action_chunk_idx += 1
+            self.episode_step += 1
+
+            dt_s = time.perf_counter() - start_loop_time
+            busy_wait_time = self.dt - dt_s
+
+            # Busy wait to maintain control frequency
+            if busy_wait_time > 0:
+                time.sleep(busy_wait_time)
+            loop_s = time.perf_counter() - start_loop_time
+            #logger.info(f"time: {loop_s * 1e3:.2f}ms ({1 / loop_s:.0f} Hz)")
+
+            if events["exit_early"]:
+                events["exit_early"] = False
+                break
+
+            if events["switch_to_teleop"]:
+                break
+
+        if not events["switch_to_teleop"]:
+            self.is_running = False
+            logger.info(f"Episode completed after {self.episode_step} steps")
+            return
+
+        #transition to teleoperate mode
+        events["switch_to_teleop"]=False
+        #move leaders to follower positions
+        for name in self.robot.follower_arms:
+            follower_pos = self.robot.follower_arms[name].read("Present_Position")
+            self.robot.leader_arms[name].driver.set_all_modes(trossen.Mode.position)
+            self.robot.leader_arms[name].driver.set_all_positions(follower_pos, 5.0, False)
+        time.sleep(2)
+        logger.info("ready for teleop")
+        say_tts("ready for teleop")
+        #pause until ready, hit down arrow again to start
+        while not events["switch_to_teleop"]:
+            time.sleep(0.1)
+        #release leaders
+        for name in self.robot.leader_arms:
+           self.robot.leader_arms[name].write("Torque_Enable", 0)
+        
+        #restarted, but now teleoperating
+        while self.is_running and self.episode_step < self.max_steps:
+            start_loop_time = time.perf_counter()
+
+            if self.display:
+                display_224=False
+                observation_dict = self.robot.capture_observation()
+                for cam in camera_features:
+                    image_hwc = observation_dict[cam].numpy()
+                    if not display_224:
+                        cv2.imshow(cam, cv2.cvtColor(image_hwc, cv2.COLOR_RGB2BGR))
+                        cv2.waitKey(1)
+                    if display_224:
+                        image_resized = image_tools.convert_to_uint8(image_tools.resize_with_pad(image_hwc, 224, 224))
+                        cv2.imshow(cam, cv2.cvtColor(image_resized, cv2.COLOR_RGB2BGR))
+                        cv2.waitKey(1)
+
+            observation, action = self.robot.teleop_step(record_data=True)
+
+            if dataset is not None:
+                #obs = self.robot.capture_observation()
+                frame = {
+                    **observation,
+                    "action": action["action"],
+                    "task": task_prompt,
+                }
+                dataset.add_frame(frame)
+
+            self.episode_step += 1
+
+            dt_s = time.perf_counter() - start_loop_time
+            busy_wait_time = self.dt - dt_s
+
+            # Busy wait to maintain control frequency
+            if busy_wait_time > 0:
+                time.sleep(busy_wait_time)
+            loop_s = time.perf_counter() - start_loop_time
+ 
+            if events["exit_early"]:
+                events["exit_early"] = False
+                break
+
+        events["switch_to_teleop"]=False
+
+        self.is_running = False
+        logger.info(f"Episode completed after {self.episode_step} steps")
+
     def _get_weights(self, num_preds: int) -> np.ndarray:
         weights = np.exp(-self.temporal_ensemble_coefficient * np.arange(num_preds))
         return weights / weights.sum()
 
-    def autonomous_mode(self, task_prompt: str = "look down"):
-        """Run in autonomous mode where the arm executes policy predictions."""
+    def autonomous_mode(self, task_prompt: str = "look down", dataset=None, num_episodes=1):
+        """Run in autonomous mode, optionally recording episodes."""
         logger.info("Starting autonomous mode")
-        self.run_episode(task_prompt=task_prompt)
+        listener, events = init_keyboard_listener()
+
+        reset_time_s=10
+
+        #say_tts("Reset environment")
+        say_tts("Reset environment")
+        time.sleep(reset_time_s)
+
+        recorded_episodes = 0
+        while recorded_episodes < num_episodes:
+
+            if events["stop_recording"]:
+                say_tts("stopped recording")
+                break
+
+            ep_index = dataset.num_episodes if dataset else recorded_episodes
+            logger.info(f"Recording episode {ep_index} ({recorded_episodes}/{num_episodes-1})")
+            say_tts(f"starting episode {ep_index}")            
+            time.sleep(2)
+            
+            if self.record_mode == "teleoperate":
+                self.release_leaders()
+                self.run_episode_teleoperate(task_prompt=task_prompt, dataset=dataset, events=events)
+            elif self.record_mode == "intervention":
+                self.run_episode_intervention(task_prompt=task_prompt, dataset=dataset, events=events)
+            else:
+                self.run_episode(task_prompt=task_prompt, dataset=dataset, events=events)
+ 
+            self.robot.teleop_safety_stop()
+            self.hold_leaders()                
+
+            if not events["stop_recording"] and (
+                recorded_episodes < num_episodes - 1 or events["rerecord_episode"]
+            ):
+                #self.robot.teleop_safety_stop()
+                #self.hold_leaders()                
+                say_tts("Reset environment")
+                time.sleep(reset_time_s)
+                if events["exit_early"]:
+                    events["exit_early"] = False
+
+            if events["rerecord_episode"]:
+                logger.info("Re-recording episode")
+                say_tts("Re-record episode")
+                time.sleep(3)
+                events["rerecord_episode"] = False
+                events["exit_early"] = False
+                if dataset is not None:
+                    dataset.clear_episode_buffer()
+                continue
+
+            if dataset is not None:
+                logger.info(f"Saving episode {ep_index}")
+                say_tts(f"Saving episode {ep_index}")
+                time.sleep(2)
+                dataset.save_episode()
+                logger.info(f"Finished saving episode {ep_index}")
+                say_tts(f"Finished saving episode {ep_index}")
+                time.sleep(3)
+        
+            recorded_episodes += 1
+
+            if events["stop_recording"]:
+                say_tts("stopped recording")
+                time.sleep(2)
+                break
+
+        if listener is not None:
+            listener.stop()
+        #logger.info(f"Completed {num_episodes} episodes")
 
     def cleanup(self):
         """Clean up resources."""
@@ -552,6 +815,21 @@ class TrossenOpenPIBridge:
         self.robot.disconnect()
         if self.speech_listener:
             self.speech_listener.stop()
+
+    def hold_leaders(self):
+        for name in self.robot.leader_arms:
+            self.robot.leader_arms[name].driver.set_all_modes(trossen.Mode.position)
+
+    def release_leaders(self):
+        for name in self.robot.leader_arms:
+           self.robot.leader_arms[name].write("Torque_Enable", 0)
+
+def parse_bool(value):
+    if value.lower() in ('true', '1', 'yes'):
+        return True
+    elif value.lower() in ('false', '0', 'no'):
+        return False
+    raise argparse.ArgumentTypeError(f"Boolean value expected, got '{value}'")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Trossen AI Stationary Kit <-> OpenPI Policy Server Bridge")
@@ -575,6 +853,15 @@ if __name__ == "__main__":
     parser.add_argument("--high_level_task", default=None, help="High-level task for Gemini planner")
     parser.add_argument("--control_mode", default="none", choices=["none", "speech", "speech_narrate", "speech_objects", "gemini_auto"],
                         help="Mode 1: speech only, Mode 2: speech + gemini narration, Mode 3: gemini autonomous")    
+    #lerobot dataset args:
+    parser.add_argument("--repo_id", default=None, help="Dataset repo ID (e.g. ANRedlich/my_dataset)")
+    parser.add_argument("--dataset_root", default=None, help="Local dataset root path")
+    parser.add_argument("--resume", type=parse_bool, default=False, help="Resume recording")
+    parser.add_argument("--num_episodes", type=int, default=1, help="Number of episodes to record")
+    parser.add_argument("--use_videos", type=parse_bool, default=True, help="Save videos")
+    parser.add_argument("--record_mode", default="rollout", 
+                        choices=["rollout", "intervention", "teleoperate"],
+                        help="Recording mode: rollout, intervention (policy+teleop switch), teleoperate")
     args = parser.parse_args()
 
     bridge = TrossenOpenPIBridge(
@@ -586,6 +873,7 @@ if __name__ == "__main__":
         action_chunk_size=args.action_chunk_size,
         max_relative_target=args.max_relative_target,
         adjust_for_sim_to_real=args.adjust_for_sim_to_real,
+        record_mode=args.record_mode,
     )
 
     bridge.control_mode = args.control_mode
@@ -618,6 +906,36 @@ if __name__ == "__main__":
         except Exception as e:
             logger.warning(f"Gemini warmup failed: {e}")
 
-    bridge.autonomous_mode(task_prompt=args.task_prompt)
+    dataset = None
+    if args.repo_id and args.dataset_root:
+        if args.resume:
+            dataset = LeRobotDataset(args.repo_id, root=args.dataset_root)
+            dataset.start_image_writer(
+                num_processes=1,
+                num_threads=4 * len(bridge.robot.cameras),
+            )
+        else:
+            dataset = LeRobotDataset.create(
+                args.repo_id,
+                args.control_freq,
+                root=args.dataset_root,
+                #robot=bridge.robot,
+                robot_type=bridge.robot.robot_type,
+                features=bridge.dataset_features,
+                use_videos=args.use_videos,
+                image_writer_processes=1,
+                image_writer_threads=4 * len(bridge.robot.cameras),
+            )
+    else:
+        logger.info("No repo_id/dataset_root specified — running without recording")
+
+    #debug
+    #logger.info(f"Dataset features: {dataset.features}")
+
+    bridge.autonomous_mode(task_prompt=args.task_prompt, dataset=dataset, num_episodes=args.num_episodes)
+    #bridge.autonomous_mode(task_prompt=args.task_prompt)
+
+    if dataset is not None:
+        dataset.stop_image_writer()
 
     bridge.cleanup()

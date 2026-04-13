@@ -93,8 +93,8 @@ DEFAULT_CHECKPOINT: dict[EnvMode, Checkpoint] = {
         #dir="./checkpoints/pi0_aloha_sim_trossen_ai_mem_finetune_v2/trossen_ai_stationary_x3/19999" #trossen_ai_stationary_sim_pi013
         #dir="./checkpoints/pi0_aloha_sim_trossen_ai_mem_finetune_v2/trossen_ai_stationary_x2/19999" #trossen_ai_stationary_place_lids_04
         #dir="./checkpoints/pi0_aloha_sim_trossen_ai_mem_finetune_v2/trossen_ai_stationary_x2/39999" #trossen_ai_stationary_place_lids_04
-        #dir="./checkpoints/pi0_aloha_sim_trossen_ai_mem_finetune_v2/trossen_ai_stationary_x2/59999" #trossen_ai_stationary_place_lids_04
-        dir="./checkpoints/pi0_aloha_sim_trossen_ai_mem_finetune_v2/trossen_ai_stationary_x4/9999" #act_trossen_ai_stationary_real_03
+        dir="./checkpoints/pi0_aloha_sim_trossen_ai_mem_finetune_v2/trossen_ai_stationary_x2/19999" #trossen_ai_stationary_place_lids_04
+        #dir="./checkpoints/pi0_aloha_sim_trossen_ai_mem_finetune_v2/trossen_ai_stationary_x4/9999" #act_trossen_ai_stationary_real_03
         #dir="./checkpoints/hf_checkpoint"
     ),
     EnvMode.ALOHA_SIM_TROSSEN_AI_FULL_FINETUNE: Checkpoint(
@@ -110,9 +110,11 @@ DEFAULT_CHECKPOINT: dict[EnvMode, Checkpoint] = {
         #dir="./checkpoints/pi0_aloha_sim_trossen_ai_full_finetune_v4/trossen_ai_stationary_x8/19999" #trossen_ai_stationary_pick_and_place_08
         #dir="./checkpoints/pi0_aloha_sim_trossen_ai_full_finetune_v4/trossen_ai_stationary_x9/39999" #trossen_ai_stationary_pick_and_place_09
         #dir="./checkpoints/pi05_aloha_sim_trossen_ai_full_finetune_v5/trossen_ai_stationary_x10/39999" #pi05 trossen_ai_stationary_pick_and_place_09
-        #dir="./checkpoints/pi05_aloha_sim_trossen_ai_full_finetune_v5/trossen_ai_stationary_x11/39999" #pi05 trossen_ai_stationary_pick_and_place_09
-        dir="./checkpoints/pi05_aloha_sim_trossen_ai_full_finetune_v5/trossen_ai_stationary_x12/39999" #pi05 trossen_ai_stationary_place_bead_on_string_10
-        #dir="./checkpoints/pi05_aloha_sim_trossen_ai_full_finetune_v6/trossen_ai_stationary_x13/39999" #pi05 with cropped images, trossen_ai_stationary_place_bead_on_string_10
+        dir="./checkpoints/pi05_aloha_sim_trossen_ai_full_finetune_v5/trossen_ai_stationary_x11/39999" #pi05 trossen_ai_stationary_pick_and_place_09
+        #dir="./checkpoints/pi05_aloha_sim_trossen_ai_full_finetune_v5/trossen_ai_stationary_x12/39999" #pi05 trossen_ai_stationary_place_bead_on_string_10
+        #dir="./checkpoints/pi05_aloha_sim_trossen_ai_full_finetune_v6/trossen_ai_stationary_x13/39999" #pi05 with 480/360 cropped images, trossen_ai_stationary_place_bead_on_string_10
+        #dir="./checkpoints/pi05_aloha_sim_trossen_ai_full_finetune_v6/trossen_ai_stationary_x14/39999" #pi05 with 480/480 cropped images, trossen_ai_stationary_place_bead_on_string_11, larger dataset
+        #dir="./checkpoints/pi05_aloha_sim_trossen_ai_full_finetune_v6/trossen_ai_stationary_x15/39999" #pi05 with 480/480 cropped images, trossen_ai_stationary_close_tie_wrap_12
      ),
     EnvMode.ALOHA_SIM_TROSSEN_AI_PI05: Checkpoint(
         config="pi05_aloha_sim_trossen_ai",

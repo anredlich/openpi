@@ -16,7 +16,7 @@ class Args:
     out_dir: pathlib.Path = pathlib.Path("data/aloha_sim/videos")
 
     task: str = "gym_aloha/AlohaTransferCube-v0"
-    seed: int = 9
+    seed: int = 0
 
     action_horizon: int = 50 #10 #can be 1-50
 

@@ -1104,8 +1104,8 @@ _CONFIGS = [
             #    asset_id="ANRedlich/trossen_ai_stationary_sim_transfer_40mm_cube_13",
             #),
             #base_config=DataConfig(prompt_from_task=True), #add for individual task prompts
-            default_prompt="Transfer cube",
-            #default_prompt="place lid on pot",
+            #default_prompt="Transfer cube",
+            default_prompt="place lid on pot",
             use_delta_joint_actions=False,
             adapt_to_pi=False, #False for v1,v2 True for v0
             adapt_trossen_to_pi=True, #True for v2 norm but by mistake not for ..._07 checkpoint
@@ -1240,12 +1240,12 @@ _CONFIGS = [
         model=pi0_config.Pi0Config(pi05=True),
         data=LeRobotAlohaDataConfig(
             #repo_id="ANRedlich/trossen_ai_stationary_pick_and_place_09",
-            #repo_id="ANRedlich/trossen_ai_stationary_place_lids_04",
-            repo_id="ANRedlich/trossen_ai_stationary_place_bead_on_string_10",
+            repo_id="ANRedlich/trossen_ai_stationary_place_lids_04",
+            #repo_id="ANRedlich/trossen_ai_stationary_place_bead_on_string_10",
             base_config=DataConfig(prompt_from_task=True),
             #default_prompt="pick and place",
-            #default_prompt="Transfer place lids using Trossen AI Stationary.",
-            default_prompt="pick up bead and place on string",
+            default_prompt="Transfer place lids using Trossen AI Stationary.",
+            #default_prompt="pick up bead and place on string",
             use_delta_joint_actions=False,
             adapt_to_pi=False,
             adapt_trossen_to_pi=True,
@@ -1281,11 +1281,14 @@ _CONFIGS = [
         data=LeRobotAlohaDataConfig(
             #repo_id="ANRedlich/trossen_ai_stationary_pick_and_place_09",
             #repo_id="ANRedlich/trossen_ai_stationary_place_lids_04",
-            repo_id="ANRedlich/trossen_ai_stationary_place_bead_on_string_10",
+            #repo_id="ANRedlich/trossen_ai_stationary_place_bead_on_string_10",
+            #repo_id="ANRedlich/trossen_ai_stationary_place_bead_on_string_11",
+            repo_id="ANRedlich/trossen_ai_stationary_close_tie_wrap_12",
             base_config=DataConfig(prompt_from_task=True),
             #default_prompt="pick and place",
             #default_prompt="Transfer place lids using Trossen AI Stationary.",
-            default_prompt="pick up bead and place on string",
+            #default_prompt="pick up bead and place on string",
+            default_prompt="close tie wrap",
             use_delta_joint_actions=False,
             adapt_to_pi=False,
             adapt_trossen_to_pi=True,
@@ -1312,7 +1315,7 @@ _CONFIGS = [
                     # Crop wrist cameras for ~1.8× zoom
                     _transforms.CenterCropImages(
                         camera_name_patterns=["wrist"],
-                        crop_size=360,
+                        crop_size=480,
                     ),
                 ]
             ),
@@ -1323,7 +1326,7 @@ _CONFIGS = [
         policy_metadata={
             "crop_cameras": {
                 "cam_high": 480,
-                "wrist": 360,
+                "wrist": 480,
             }
         },
     ),

@@ -25,6 +25,12 @@ import threading
 import subprocess
 import threading
 
+from kokoro_onnx import Kokoro
+import soundfile as sf
+import threading
+
+kokoro = Kokoro('/home/trossen-ai/models/kokoro/kokoro-v1.0.onnx', '/home/trossen-ai/models/kokoro/voices-v1.0.bin')
+
 class SlateBaseSystemState(IntEnum):
     SYS_INIT = 0x00
     SYS_NORMAL = 0x01
@@ -119,6 +125,8 @@ def init_keyboard_listener():
     events["exit_early"] = False
     events["rerecord_episode"] = False
     events["stop_recording"] = False
+    events["switch_to_teleop"] = False
+    events["switch_to_rollout"] = False
 
     if is_headless():
         #logging.warning(
@@ -143,6 +151,12 @@ def init_keyboard_listener():
                 print("Escape key pressed. Stopping data recording...")
                 events["stop_recording"] = True
                 events["exit_early"] = True
+            elif key == keyboard.Key.down:
+                print("Down arrow key pressed. Switching to teleoperation...")
+                events["switch_to_teleop"] = True
+            elif key == keyboard.Key.up:
+                print("Up arrow key pressed. Switching to rollout...")
+                events["switch_to_rollout"] = True
         except Exception as e:
             print(f"Error handling key press: {e}")
 
@@ -193,6 +207,29 @@ def say_gtts(text, blocking=False, lang='en'):
         except Exception as e:
             print(f"Google TTS failed: {e}")
     
+    if blocking:
+        _speak()
+    else:
+        threading.Thread(target=_speak, daemon=True).start()
+
+def say_tts(text, blocking=False):
+    """Local TTS using Kokoro — no internet required"""
+    def _speak():
+        try:
+            samples, sample_rate = kokoro.create(text, voice='af_aoede', speed=0.85, lang='en-us') #af_aoede, af_bella, af_alloy
+            import numpy as np
+            silence = np.zeros(int(0.5 * sample_rate), dtype=samples.dtype)
+            samples = np.concatenate([silence, samples])
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as tmp_file:
+                sf.write(tmp_file.name, samples, sample_rate)
+            subprocess.run(
+                ['aplay', '-D', 'pulse', tmp_file.name],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            )
+            os.unlink(tmp_file.name)
+        except Exception as e:
+            print(f"TTS failed: {e}")
+
     if blocking:
         _speak()
     else:
