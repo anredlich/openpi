@@ -57,25 +57,26 @@
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
-                    "--task_prompt=place lid on pot",
-                    //"--task_prompt='Transfer cube'", //default='Transfer cube'
-                    //"--task_prompt='pick up yellow cube and place in silver pan'",
-                    //"--task_prompt='pick up white cube and place in silver pan'",
-                    //"--task_prompt='pick up red cube and place in green bucket'", //for pick and place 09
-                    //"--task_prompt=Transfer place lids using Trossen AI Stationary.", //for place lids 04
-                    //"--task_prompt='pick and place'",
-                    //"--task_prompt='pick up bead and place on string'", //for trossen_ai_stationary_place_bead_on_string_10
-                    //"--task_prompt='close tie wrap'", //for trossen_ai_stationary_close_tie_wrap_12
+                    //"--task_prompt=place lid on pot",
+                    //"--task_prompt=Transfer cube", //default='Transfer cube'
+                    //"--task_prompt=pick up yellow cube and place in silver pan",
+                    //"--task_prompt=pick up red cube and place in green bucket", //for pick and place 09
+                    "--task_prompt=Transfer place lids using Trossen AI Stationary.", //for place lids 04
+                    //"--task_prompt=pick and place",
+                    //"--task_prompt=pick up bead and place on string", //for trossen_ai_stationary_place_bead_on_string_10
+                    //"--task_prompt=close tie wrap", //for trossen_ai_stationary_close_tie_wrap_12
                     "--max_steps=5000", //default=1000
                     "--action_chunk_size=50", //default=50
                     "--max_relative_target=1.0", //0.25", //0.1", //default=0.05
                     //"--adjust_for_sim_to_real=True", //default=False
                     //"--high_level_task=Pick up all the cubes on the table and place them in the green bucket",
                     //"--control_mode=none", //speech speech_narrate speech_objects gemini_auto   
-                    "--repo_id=ANRedlich/eval_trossen_ai_stationary_place_lids_04_junk1",
-                    "--dataset_root=/home/trossen-ai/openpi/openpi/datasets/eval_place_lids_04_junk1",
-                    //"--resume=True",
-                    "--num_episodes=10", //Number of episodes to record
+                    //"--repo_id=ANRedlich/eval_trossen_ai_stationary_place_lids_04_pi05_int",
+                    "--repo_id=ANRedlich/eval_trossen_ai_stationary_place_lids_13_pi05_int_junk",
+                    //"--dataset_root=/home/trossen-ai/openpi/openpi/datasets/eval_place_lids_04_pi05_int",
+                    "--dataset_root=/home/trossen-ai/openpi/openpi/datasets/eval_place_lids_13_pi05_int_junk",
+                    "--resume=True",
+                    "--num_episodes=50", //Number of episodes to record
                     //"--use_videos=False",
                     "--record_mode=intervention", //intervention", //rollout", //teleoperate",
                 ]
@@ -256,8 +257,8 @@
             "args": [
                     //"--config-name=pi0_aloha_sim_trossen_ai_full_finetune_v0",
                     //"--config-name=pi0_aloha_sim_trossen_ai_full_finetune_v4",
-                    //"--config-name=pi05_aloha_sim_trossen_ai_full_finetune_v5",
-                    "--config-name=pi05_aloha_sim_trossen_ai_full_finetune_v6",
+                    "--config-name=pi05_aloha_sim_trossen_ai_full_finetune_v5",
+                    //"--config-name=pi05_aloha_sim_trossen_ai_full_finetune_v6",
                     //"--max-frames=1000",
                    ]
         },

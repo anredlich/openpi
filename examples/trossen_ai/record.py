@@ -97,8 +97,8 @@ class TrossenOpenPIBridge:
         self.record_mode=record_mode
         if record_mode == 'rollout':
             self.robot.leader_arms = {} #[]
-        self.robot.connect()
-        self.hold_leaders()
+        self.robot.connect(hold=True)
+        #self.hold_leaders()
 
         self.current_action_chunk = None
         self.action_chunk_idx = 0

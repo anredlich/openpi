@@ -245,7 +245,7 @@ class ManipulatorRobot:
             for arms in self.follower_arms:
                 self.follower_arms[arms].set_home_pose(home_pose)
 
-    def connect(self):
+    def connect(self, hold: bool = False):
         if self.is_connected:
             raise RobotDeviceAlreadyConnectedError(
                 "ManipulatorRobot is already connected. Do not run `robot.connect()` twice."
@@ -273,10 +273,11 @@ class ManipulatorRobot:
 
         # We assume that at connection time, arms are in a rest position, and torque can
         # be safely disabled to run calibration and/or set robot preset configurations.
-        for name in self.follower_arms:
-            self.follower_arms[name].write("Torque_Enable", TorqueMode.DISABLED.value)
-        for name in self.leader_arms:
-            self.leader_arms[name].write("Torque_Enable", TorqueMode.DISABLED.value)
+        if not hold:
+            for name in self.follower_arms:
+                self.follower_arms[name].write("Torque_Enable", TorqueMode.DISABLED.value)
+            for name in self.leader_arms:
+                self.leader_arms[name].write("Torque_Enable", TorqueMode.DISABLED.value)
 
         if self.robot_type not in ["trossen_ai_stationary", "trossen_ai_solo"]:
             print("Checking if calibration is needed.")

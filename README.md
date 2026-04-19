@@ -1,3 +1,21 @@
+# openpi fork
+
+Note: this readme is under construction.
+
+This fork adds:
+
+[Trossen AI Stationary robot](https://www.trossenrobotics.com/) sim to real capability using the added TrossenAIStationary robot virtual environments in https://github.com/anredlich/gym-aloha. This capability is in the `openpi/examples/aloha_sim_trossen_ai` directory.
+
+[Trossen AI Stationary robot](https://www.trossenrobotics.com/) real robot capability in the `openpi/examples/trossen_ai` directory. In this directory, `main.py` runs a pi0 or pi0.5 model on the Trossen AI robot. `record.py` adds human intervention capability. It runs a pi0/pi0.5 policy rollout until a person intervenes to prevent failure, and then the person continues the episode using teleoperation. This episode is then saved in standard lerobot format. In addition, in `main.py` high-level voice control and [Gemini-Robotics-ER1.5](https://deepmind.google/models/gemini-robotics/gemini-robotics-er/) have been added.
+
+A number of `TrainConfig(...)` have been added to `openpi/src/openpi/training/config.py` to be used to train pi0 and pi0.5 models on lerobot datasets for the Trossen AI Stationary robot, including datasets with multiple tasks/sub-task prompts. All of these have 'trossen_ai' in the name, e.g. name="pi0_aloha_sim_trossen_ai".
+
+In `openpi/scripts/serve_policy.py` some checkpoints such as EnvMode.ALOHA_SIM_TROSSEN_AI_FULL_FINETUNE: Checkpoint(...) have been added to serve pi0/pi0.5 policies for the Trossen robot.
+
+For more details, see https://anrrobot.com/index.html
+
+<img src="pi05_bread_on_string.gif" width="70%" alt="TrossenAI Stationary TransferCube demo"/>
+
 # openpi
 
 openpi holds open-source models and packages for robotics, published by the [Physical Intelligence team](https://www.physicalintelligence.company/).

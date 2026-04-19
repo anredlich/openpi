@@ -1240,7 +1240,8 @@ _CONFIGS = [
         model=pi0_config.Pi0Config(pi05=True),
         data=LeRobotAlohaDataConfig(
             #repo_id="ANRedlich/trossen_ai_stationary_pick_and_place_09",
-            repo_id="ANRedlich/trossen_ai_stationary_place_lids_04",
+            repo_id="ANRedlich/trossen_ai_stationary_place_lids_04", #use w trossen_ai_stationary_x11/39999
+            #repo_id="ANRedlich/trossen_ai_stationary_place_lids_13", #use w trossen_ai_stationary_x11/45000
             #repo_id="ANRedlich/trossen_ai_stationary_place_bead_on_string_10",
             base_config=DataConfig(prompt_from_task=True),
             #default_prompt="pick and place",
@@ -1268,8 +1269,14 @@ _CONFIGS = [
             ),
         ),
         weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
-        num_train_steps=40_000,
-        save_interval=5000,
+        lr_schedule=_optimizer.CosineDecaySchedule(
+            warmup_steps=0,
+            peak_lr=5e-6,
+            decay_steps=200_000,
+            decay_lr=5e-6,
+        ),        
+        num_train_steps=60_000,
+        save_interval=2500,
     ),
     #
     # ALOHA Sim Trossen configs. This config is used to demonstrate how to train on the trossen ai simulated environment.
