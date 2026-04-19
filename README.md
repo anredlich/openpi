@@ -12,7 +12,7 @@ A number of `TrainConfig(...)` have been added to `openpi/src/openpi/training/co
 
 In `openpi/scripts/serve_policy.py` some checkpoints such as EnvMode.ALOHA_SIM_TROSSEN_AI_FULL_FINETUNE: Checkpoint(...) have been added to serve pi0/pi0.5 policies for the Trossen robot.
 
-For more details, see https://anrrobot.com/index.html
+For more details, see https://anrrobot.com
 
 <img src="pi05_bread_on_string.gif" width="70%" alt="TrossenAI Stationary TransferCube demo"/>
 
